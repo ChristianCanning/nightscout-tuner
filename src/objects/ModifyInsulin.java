@@ -1,10 +1,10 @@
 import java.time.LocalTime;
 
-public class modifyInsulin
+public class ModifyInsulin
 {
     private double amount;
     private LocalTime time;
-    public modifyInsulin(double amount, LocalTime time)
+    public ModifyInsulin(double amount, LocalTime time)
     {
         this.amount = amount;
         this.time = time;

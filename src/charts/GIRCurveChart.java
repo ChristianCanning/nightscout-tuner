@@ -5,9 +5,9 @@ import org.knowm.xchart.XYChart;
 import javax.swing.*;
 import java.time.ZonedDateTime;
 
-public class insulinCurveChart
+public class GIRCurveChart
 {
-    public insulinCurveChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public GIRCurveChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         XYChart chart = QuickChart.getChart("Insulin Curve Chart " + dateStart.toLocalDate() + " to " + dateEnd.toLocalDate() , "Minutes", "Insulin Curve", "Average ", xData, yData);
 
@@ -26,7 +26,7 @@ public class insulinCurveChart
 
         JPanel chartPanel = new XChartPanel<XYChart>(chart);
 
-        main.getGUI().addChart(chartPanel);
+        Main.getGUI().addChart(chartPanel);
 
     }
 }

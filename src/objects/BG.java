@@ -1,11 +1,12 @@
 import java.time.*;
 
-public class bg
+// The BG (Blood Glucose) object
+public class BG
 {
     private int bg;
     private ZonedDateTime date;
 
-    public bg(int bg, ZonedDateTime date)
+    public BG(int bg, ZonedDateTime date)
     {
         this.bg = bg;
         this.date = date;

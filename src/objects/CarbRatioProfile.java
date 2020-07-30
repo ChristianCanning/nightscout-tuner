@@ -1,17 +1,17 @@
 import java.time.*;
 
-public class isfProfile
+public class CarbRatioProfile
 {
-    private isf[] profile;
+    private CarbRatio[] profile;
     private ZonedDateTime startDate;
 
-    public isfProfile(isf[] profile, ZonedDateTime startDate)
+    public CarbRatioProfile(CarbRatio[] profile, ZonedDateTime startDate)
     {
         this.profile = profile.clone();
         this.startDate = startDate;
     }
 
-    public isf[] getProfile()
+    public CarbRatio[] getProfile()
     {
         return profile;
     }

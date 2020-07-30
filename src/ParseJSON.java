@@ -7,7 +7,7 @@ import java.net.URL;
 import java.time.*;
 import java.util.ArrayList;
 
-public class parseJSON
+public class ParseJSON
 {
     private static String profileString; // String which contains the entire Nightscout profile.
 
@@ -29,7 +29,7 @@ public class parseJSON
     }
 
     // Get all Blood Glucose values from Nightscout within the specified dates. Nightscout's JSONs refers to BGs as SGVs (sugar glucose values)
-    public static bg[] getBG(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static BG[] getBG(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         // Download a JSON with all the BGs and set it equal to the bgString
         String bgString = "";
@@ -44,7 +44,7 @@ public class parseJSON
         }
 
         JSONArray bgJSON = new JSONArray(bgString); // Turn bgString into a JSON array
-        ArrayList<bg> bgList = new ArrayList<bg>(); // Create an ArrayList to hold all the BGs that we are going to parse
+        ArrayList<BG> bgList = new ArrayList<BG>(); // Create an ArrayList to hold all the BGs that we are going to parse
         // For each loop which grabs every 'sgv' (bg) entry and adds them to the bgList
         for(Object i : bgJSON)
         {
@@ -53,13 +53,13 @@ public class parseJSON
             ZonedDateTime date = LocalDateTime.parse(dateString.substring(0, dateString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault());
             int bgValue = entry.getInt("sgv");
             if((date.compareTo(dateStart)) >= 0 && date.compareTo(dateEnd) <=0)
-                bgList.add(0, new bg(bgValue, date));
+                bgList.add(0, new BG(bgValue, date));
         }
-        return bgList.toArray(new bg[bgList.size()]); // Return bgList as an array
+        return bgList.toArray(new BG[bgList.size()]); // Return bgList as an array
     }
 
     // Get all tempBasals from Nightscout within the specified dates
-    public static tempBasal[] getTempBasal(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static TempBasal[] getTempBasal(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         // Download a JSON with all the treatments and set it equal to the treatmentsString
         String treatmentsString = "";
@@ -74,7 +74,7 @@ public class parseJSON
         }
 
         JSONArray tempBasalJSON = new JSONArray(treatmentsString); // Turn treatmentsString into a JSON array
-        ArrayList<tempBasal> tempBasalList= new ArrayList<tempBasal>(); // Create ArrayList to hold all the tempBasals
+        ArrayList<TempBasal> tempBasalList= new ArrayList<TempBasal>(); // Create ArrayList to hold all the tempBasals
         // For each loop to parse the tempBasals and add them to tempBasalList
         for(Object i : tempBasalJSON)
         {
@@ -84,13 +84,13 @@ public class parseJSON
             double rate = entry.getDouble("rate");
             double duration = entry.getDouble("duration");
             if((created_at.compareTo(dateStart)) >= 0 && created_at.compareTo(dateEnd) <=0)
-                tempBasalList.add(0, new tempBasal(rate, duration, created_at));
+                tempBasalList.add(0, new TempBasal(rate, duration, created_at));
         }
-        return tempBasalList.toArray(new tempBasal[tempBasalList.size()]); // return all the temp basals as an array
+        return tempBasalList.toArray(new TempBasal[tempBasalList.size()]); // return all the temp basals as an array
     }
 
     // Get all the correction boluses (non basal insulin deliveries, such as insulin delivered for meals) within the specified dates.
-    public static correctionBolus[] getCorrectionBolus(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static CorrectionBolus[] getCorrectionBolus(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         // Download a JSON with all the treatments and set it equal to the treatmentsString
         String treatmentsString = "";
@@ -105,7 +105,7 @@ public class parseJSON
         }
 
         JSONArray correctionBolusJSON = new JSONArray(treatmentsString); // Turn treatmentsString into a JSON array
-        ArrayList<correctionBolus> correctionBolusList= new ArrayList<correctionBolus>(); // Create ArrayList to hold all the correction boluses
+        ArrayList<CorrectionBolus> correctionBolusList= new ArrayList<CorrectionBolus>(); // Create ArrayList to hold all the correction boluses
 
         //For each loop to grab all the correction boluses and put them in the correctionBolusList
         for(Object i : correctionBolusJSON)
@@ -115,15 +115,15 @@ public class parseJSON
             ZonedDateTime timestamp = LocalDateTime.parse(created_atString.substring(0, created_atString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault());
             double insulin = entry.getDouble("insulin");
             if((timestamp.compareTo(dateStart)) >= 0 && timestamp.compareTo(dateEnd) <=0)
-                correctionBolusList.add(0, new correctionBolus(insulin, timestamp));
+                correctionBolusList.add(0, new CorrectionBolus(insulin, timestamp));
 
         }
-        return correctionBolusList.toArray(new correctionBolus[correctionBolusList.size()]);
+        return correctionBolusList.toArray(new CorrectionBolus[correctionBolusList.size()]);
     }
 
     // Get all the meal boluses within the specified dates. Curiously, meal boluses only contain data for the carbs, and not the insulin delivered.
     // the insulin delivered from meals is stored within the correction boluses
-    public static mealBolus[] getMealBolus(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static MealBolus[] getMealBolus(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         // Download a JSON with all the treatments and set it equal to the treatmentsString
         String treatmentsString = "";
@@ -138,7 +138,7 @@ public class parseJSON
         }
 
         JSONArray mealBolusJSON = new JSONArray(treatmentsString); // Turn treatmentsString into a JSON array
-        ArrayList<mealBolus> mealBolusList= new ArrayList<mealBolus>(); // Create ArrayList to hold all the meal boluses
+        ArrayList<MealBolus> mealBolusList= new ArrayList<MealBolus>(); // Create ArrayList to hold all the meal boluses
         // For each loop to put every meal bolus into the mealBolusList
         for(Object i : mealBolusJSON)
         {
@@ -148,25 +148,25 @@ public class parseJSON
             int carbs = entry.getInt("carbs");
             int absorptionTime = entry.getInt("absorptionTime");
             if((timestamp.compareTo(dateStart)) >= 0 && timestamp.compareTo(dateEnd) <=0)
-                mealBolusList.add(0, new mealBolus(carbs, absorptionTime, timestamp));
+                mealBolusList.add(0, new MealBolus(carbs, absorptionTime, timestamp));
 
         }
-        return mealBolusList.toArray(new mealBolus[mealBolusList.size()]); // Return mealBolusList as an array
+        return mealBolusList.toArray(new MealBolus[mealBolusList.size()]); // Return mealBolusList as an array
     }
 
     // Get all the basalProfiles within the specified dates. Profiles are uploaded to nighscout at irregular intervals, so some days may not have a
     // profile uploaded. If that's the case, we increment back by one day until we find a basal profile.
-    public static basalProfile[] getBasalProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static BasalProfile[] getBasalProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         // *The profile string is a private variable at the top of this class.*
         JSONArray profileJSON = new JSONArray(profileString); // Turn the profile string into a JSON array
-        ArrayList<basalProfile> basalProfileList = new ArrayList<basalProfile>(); // Create arraylist to hold the basal profiles
+        ArrayList<BasalProfile> basalProfileList = new ArrayList<BasalProfile>(); // Create arraylist to hold the basal profiles
         // Create previousProfile1 which will hold the previous profile (*1* profile prior) as we loop through the profileJSON. This is initialized to 1970 to make sure that it is
         // always before the first date that we check in the profileJSON
-        basalProfile previousProfile1 = new basalProfile(new basal[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        BasalProfile previousProfile1 = new BasalProfile(new Basal[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
         // previousProfile2 is the same as previousProfile1, except it will be 2 positions previous (*2* profiles prior). So previousProfile1 gets set to previousProfile2 after
         // each loop, and previousProfile1 gets set to the profile we just looped through.
-        basalProfile previousProfile2 = new basalProfile(new basal[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        BasalProfile previousProfile2 = new BasalProfile(new Basal[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
         //loop through every profile in profileJSON. Each profile will contain a basal profile
         for(Object i : profileJSON)
         {
@@ -177,14 +177,14 @@ public class parseJSON
             JSONObject store = entry.getJSONObject("store");
             JSONObject Default = store.getJSONObject("Default");
             JSONArray basal = Default.getJSONArray("basal");
-            basal[] basalArray = new basal[basal.length()]; // Create array of basals to hold in the basal profile
+            Basal[] basalArray = new Basal[basal.length()]; // Create array of basals to hold in the basal profile
             // Add each basal to the basal profile
             for(int j =0; j < basal.length(); j++)
             {
                 JSONObject basalEntry = basal.getJSONObject(j);
                 double value = basalEntry.getDouble("value");
                 LocalTime time = LocalTime.parse(basalEntry.getString("time"));
-                basalArray[j] = new basal(value, time);
+                basalArray[j] = new Basal(value, time);
             }
 
             // *Remember that dateStart and dateEnd are our start and end dates for grabbing profiles*
@@ -202,9 +202,9 @@ public class parseJSON
             }
             // If the current profile's date is after dateStart and before dateEnd
             if(startDate.compareTo(dateStart) >= 0 && startDate.compareTo(dateEnd) <=0)
-                basalProfileList.add(0, new basalProfile(basalArray, startDate));
-            previousProfile2 = new basalProfile(previousProfile1.getProfile(), previousProfile1.getStartDate()); // Set previousProfile2 to previousProfile1
-            previousProfile1 = new basalProfile(basalArray, startDate); // Set previousProfile1 to the currentProfile
+                basalProfileList.add(0, new BasalProfile(basalArray, startDate));
+            previousProfile2 = new BasalProfile(previousProfile1.getProfile(), previousProfile1.getStartDate()); // Set previousProfile2 to previousProfile1
+            previousProfile1 = new BasalProfile(basalArray, startDate); // Set previousProfile1 to the currentProfile
 
         }
 
@@ -212,27 +212,27 @@ public class parseJSON
         // Continues going backwards by one day until we find a basal profile.
         for(int i = 1; basalProfileList.size() == 0; i++)
         {
-            basalProfile[] temp = getBasalProfile(dateStart.minusDays(i), dateEnd);
+            BasalProfile[] temp = getBasalProfile(dateStart.minusDays(i), dateEnd);
             if(temp.length > 0)
             {
-                for(basalProfile a : temp)
+                for(BasalProfile a : temp)
                 {
                     basalProfileList.add(a);
                 }
             }
         }
 
-        return basalProfileList.toArray(new basalProfile[basalProfileList.size()]); // Return the basalProfile list as an array
+        return basalProfileList.toArray(new BasalProfile[basalProfileList.size()]); // Return the basalProfile list as an array
     }
 
     // Grab the carbratioProfiles within the specified dates. The rest of the code below follows the same concept as the basalProfile.
     // Refer to the getBasalProfile method for further explanation.
-    public static carbratioProfile[] getCarbratioProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static CarbRatioProfile[] getCarbratioProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         JSONArray profileJSON = new JSONArray(profileString);
-        ArrayList<carbratioProfile> carbratioProfileList = new ArrayList<carbratioProfile>();
-        carbratioProfile previousProfile1 = new carbratioProfile(new carbratio[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
-        carbratioProfile previousProfile2 = new carbratioProfile(new carbratio[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        ArrayList<CarbRatioProfile> carbRatioProfileList = new ArrayList<CarbRatioProfile>();
+        CarbRatioProfile previousProfile1 = new CarbRatioProfile(new CarbRatio[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        CarbRatioProfile previousProfile2 = new CarbRatioProfile(new CarbRatio[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
         for(Object i : profileJSON)
         {
             JSONObject entry = (JSONObject)i;
@@ -241,35 +241,35 @@ public class parseJSON
             JSONObject store = entry.getJSONObject("store");
             JSONObject Default = store.getJSONObject("Default");
             JSONArray carbratio = Default.getJSONArray("carbratio");
-            carbratio[] carbratioArray = new carbratio[carbratio.length()];
+            CarbRatio[] carbRatioArray = new CarbRatio[carbratio.length()];
             for(int j =0; j < carbratio.length(); j++)
             {
                 JSONObject basalEntry = carbratio.getJSONObject(j);
                 double value = basalEntry.getDouble("value");
                 LocalTime time = LocalTime.parse(basalEntry.getString("time"));
-                carbratioArray[j] = new carbratio(value, time);
+                carbRatioArray[j] = new CarbRatio(value, time);
             }
             if(!(previousProfile1.getStartDate().compareTo(dateStart) >= 0 && previousProfile1.getStartDate().compareTo(dateEnd) <=0))
             {
                 if (previousProfile1.getStartDate().compareTo(dateEnd) <= 0 && startDate.compareTo(dateEnd) <= 0 && previousProfile2.getStartDate().compareTo(dateStart) >= 0)
-                    carbratioProfileList.add(0, previousProfile1);
+                    carbRatioProfileList.add(0, previousProfile1);
             }
             if((startDate.compareTo(dateStart)) >= 0 && startDate.compareTo(dateEnd) <=0)
-                carbratioProfileList.add(0, new carbratioProfile(carbratioArray, startDate));
-            previousProfile2 = new carbratioProfile(previousProfile1.getProfile(), previousProfile1.getStartDate());
-            previousProfile1 = new carbratioProfile(carbratioArray, startDate);
+                carbRatioProfileList.add(0, new CarbRatioProfile(carbRatioArray, startDate));
+            previousProfile2 = new CarbRatioProfile(previousProfile1.getProfile(), previousProfile1.getStartDate());
+            previousProfile1 = new CarbRatioProfile(carbRatioArray, startDate);
         }
-        return carbratioProfileList.toArray(new carbratioProfile[carbratioProfileList.size()]);
+        return carbRatioProfileList.toArray(new CarbRatioProfile[carbRatioProfileList.size()]);
     }
 
     // Grab the ISF (Insulin Sensitivity Factor) profiles within the specified dates. The rest of the code below follows the same concept
     // as the basalProfile. Refer to the getBasalProfile method for further explanation. Nightscout JSONs refer to ISF as 'sens'.
-    public static isfProfile[] getIsfProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public static ISFProfile[] getIsfProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         JSONArray profileJSON = new JSONArray(profileString);
-        ArrayList<isfProfile> isfProfileList = new ArrayList<isfProfile>();
-        isfProfile previousProfile1 = new isfProfile(new isf[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
-        isfProfile previousProfile2 = new isfProfile(new isf[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        ArrayList<ISFProfile> isfProfileList = new ArrayList<ISFProfile>();
+        ISFProfile previousProfile1 = new ISFProfile(new ISF[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
+        ISFProfile previousProfile2 = new ISFProfile(new ISF[0], LocalDateTime.parse("1970-01-01T00:00").atZone(ZoneId.of("GMT")));
         for(Object i : profileJSON)
         {
             JSONObject entry = (JSONObject)i;
@@ -278,13 +278,13 @@ public class parseJSON
             JSONObject store = entry.getJSONObject("store");
             JSONObject Default = store.getJSONObject("Default");
             JSONArray sens = Default.getJSONArray("sens");
-            isf[] isfArray = new isf[sens.length()];
+            ISF[] isfArray = new ISF[sens.length()];
             for(int j =0; j < sens.length(); j++)
             {
                 JSONObject basalEntry = sens.getJSONObject(j);
                 double value = basalEntry.getDouble("value");
                 LocalTime time = LocalTime.parse(basalEntry.getString("time"));
-                isfArray[j] = new isf(value, time);
+                isfArray[j] = new ISF(value, time);
             }
             if(!(previousProfile1.getStartDate().compareTo(dateStart) >= 0 && previousProfile1.getStartDate().compareTo(dateEnd) <=0))
             {
@@ -292,11 +292,11 @@ public class parseJSON
                     isfProfileList.add(0, previousProfile1);
             }
             if((startDate.compareTo(dateStart)) >= 0 && startDate.compareTo(dateEnd) <=0)
-                isfProfileList.add(0, new isfProfile(isfArray, startDate));
-            previousProfile2 = new isfProfile(previousProfile1.getProfile(), previousProfile1.getStartDate());
-            previousProfile1 = new isfProfile(isfArray, startDate);
+                isfProfileList.add(0, new ISFProfile(isfArray, startDate));
+            previousProfile2 = new ISFProfile(previousProfile1.getProfile(), previousProfile1.getStartDate());
+            previousProfile1 = new ISFProfile(isfArray, startDate);
         }
-        return isfProfileList.toArray(new isfProfile[isfProfileList.size()]);
+        return isfProfileList.toArray(new ISFProfile[isfProfileList.size()]);
     }
 
 }

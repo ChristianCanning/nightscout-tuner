@@ -1,11 +1,11 @@
 import java.time.*;
 
-public class modifyBG
+public class ModifyBG
 {
     private double bg;
     private LocalTime time;
 
-    public modifyBG(double bg, LocalTime time)
+    public ModifyBG(double bg, LocalTime time)
     {
         this.bg = bg;
         this.time = time;

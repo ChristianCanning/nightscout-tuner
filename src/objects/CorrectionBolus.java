@@ -1,11 +1,11 @@
 import java.time.*;
 
-public class correctionBolus
+public class CorrectionBolus
 {
     private double insulin;
     private ZonedDateTime timestamp;
 
-    public correctionBolus(double insulin, ZonedDateTime timestamp)
+    public CorrectionBolus(double insulin, ZonedDateTime timestamp)
     {
         this.insulin = insulin;
         this.timestamp = timestamp;

@@ -1,12 +1,12 @@
 import java.time.*;
 
-public class mealBolus
+public class MealBolus
 {
     private int carbs;
     private int absorptionTime;
     private ZonedDateTime timestamp;
 
-    public mealBolus(int carbs, int absorptionTime, ZonedDateTime timestamp)
+    public MealBolus(int carbs, int absorptionTime, ZonedDateTime timestamp)
     {
         this.carbs = carbs;
         this.absorptionTime = absorptionTime;

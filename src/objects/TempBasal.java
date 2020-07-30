@@ -1,12 +1,12 @@
 import java.time.*;
 
-public class tempBasal implements Comparable<tempBasal>
+public class TempBasal implements Comparable<TempBasal>
 {
     private double rate;
     private double duration;
     private ZonedDateTime created_at;
 
-    public tempBasal(double rate, double duration, ZonedDateTime created_at)
+    public TempBasal(double rate, double duration, ZonedDateTime created_at)
     {
         this.rate =  rate;
         this.duration = duration;
@@ -27,7 +27,7 @@ public class tempBasal implements Comparable<tempBasal>
     }
 
     @Override
-    public int compareTo(tempBasal o)
+    public int compareTo(TempBasal o)
     {
         return getCreated_at().compareTo(o.getCreated_at());
     }

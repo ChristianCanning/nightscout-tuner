@@ -7,7 +7,7 @@ import java.awt.event.ActionListener;
 import java.time.*;
 
 // The gui class handles most of the gui elements, as well as user input
-public class gui implements ActionListener
+public class GUI implements ActionListener
 {
     private String urlString; // Nightscout URL
     private ZonedDateTime dateStart; // Start date, inclusive
@@ -51,7 +51,7 @@ public class gui implements ActionListener
     private JPanel panel4; // Panel w/ run button which starts the code
     private JButton button;
 
-    public gui()
+    public GUI()
     {
         // Create array of String start and end dates to put into the dateStart and dateEnd selection boxes
         ZonedDateTime currentDay = ZonedDateTime.now();
@@ -180,18 +180,18 @@ public class gui implements ActionListener
         // Only download the profile if we haven't already downloaded it. Since the entire profile is downloaded from nightscout,
         // which disregards what our start and end date are, we don't want to keep downloading the same thing every time the user
         // presses the 'button'
-        parseJSON.setProfile(urlString);
+        ParseJSON.setProfile(urlString);
 
         this.chartPanel.removeAll(); // Clear the chartPanel
         this.basalPanel.removeAll(); // Clear the basalPanel
 
         // If a chart is selected, run the code to display the chart
         if(selectBasalChart.isSelected())
-            chart.averageBasals(urlString, dateStart, dateEnd, Integer.parseInt((String)basalChartPeriod.getSelectedItem()), true);
+            Chart.averageBasals(urlString, dateStart, dateEnd, Integer.parseInt((String)basalChartPeriod.getSelectedItem()), true);
         if(selectBGChart.isSelected())
-            chart.averageBGs(urlString, dateStart, dateEnd, true);
+            Chart.averageBGs(urlString, dateStart, dateEnd, true);
         if(selectCOBChart.isSelected())
-            chart.averageCOB(urlString, dateStart, dateEnd, Double.parseDouble(COBChartRateInput.getText()));
+            Chart.averageCOB(urlString, dateStart, dateEnd, Double.parseDouble(COBChartRateInput.getText()));
 
 
         Thread display = new Thread(new Runnable()
@@ -203,13 +203,13 @@ public class gui implements ActionListener
                 {
                     int period = Integer.parseInt((String)basalChartPeriod.getSelectedItem()); // Choose to adjust basals by 30 or 60 minutes
                     double weight = Double.parseDouble(weightInput.getText()); // Weight of user in KG
-                    double[] basalAverages = chart.averageBasals(urlString, dateStart, dateEnd, period, false);
+                    double[] basalAverages = Chart.averageBasals(urlString, dateStart, dateEnd, period, false);
                     // Get the Duration of Insulin Activity for every 5 minute period in the day.
                     // Each 5 minute period takes into account the previous minutes based on what the insulinPoolInput is.
-                    double[] dia = calculations.getDia(parseJSON.getCorrectionBolus(urlString, dateStart, dateEnd), urlString, dateStart, dateEnd, weight, Integer.parseInt(insulinPoolInput.getText()));
+                    double[] dia = Calculations.getDia(ParseJSON.getCorrectionBolus(urlString, dateStart, dateEnd), urlString, dateStart, dateEnd, weight, Integer.parseInt(insulinPoolInput.getText()));
                     // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
                     // and the third has the basals that actually ran, which includes the profile basals and temp basals
-                    String[][] correctedBasals = chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, dia, basalAverages);
+                    String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, dia, basalAverages);
                     String[] columnNames = {"", "", "", ""}; // Let Swing know to show a table with 4 columns
                     basalTable = new JTable(correctedBasals, columnNames);
                     basalPanel.add(basalTable);

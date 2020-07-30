@@ -1,11 +1,11 @@
 import java.time.*;
 
-public class isf
+public class ISF
 {
     private double value;
     private LocalTime time;
 
-    public isf(double value, LocalTime time)
+    public ISF(double value, LocalTime time)
     {
         this.value = value;
         this.time = time;

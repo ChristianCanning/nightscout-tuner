@@ -1,11 +1,11 @@
 import java.time.*;
 
-public class carbratio
+public class CarbRatio
 {
     private double value;
     private LocalTime time;
 
-    public carbratio(double value, LocalTime time)
+    public CarbRatio(double value, LocalTime time)
     {
         this.value = value;
         this.time = time;

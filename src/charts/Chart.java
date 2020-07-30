@@ -8,15 +8,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class chart
+public class Chart
 {
     // Show the average BGs during the specified period. If showChart is set to false, the chart is not shown, however the average BGs are returned
     // in an array.
     public static double[] averageBGs(String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, boolean showChart)
     {
-        bg[] bgs = parseJSON.getBG(url, dateStart, dateEnd); // Get all BGs between dates
+        BG[] bgs = ParseJSON.getBG(url, dateStart, dateEnd); // Get all BGs between dates
         int duration = (int)Duration.between(dateStart.toLocalDateTime(), dateEnd.toLocalDateTime()).toDays(); // Count number of days
-        bg[][] bgMatrix = new bg[duration][288]; // Create a matrix so that each row contains the BGs for one day
+        BG[][] bgMatrix = new BG[duration][288]; // Create a matrix so that each row contains the BGs for one day
 
         // Create array to count the number of BGs that are added for each column in bgMatrix (so the same time, but different day. These are the
         // values we want to average.) We need to keep count of the number of BGs in each column, because on some days the sensor may have stopped
@@ -36,7 +36,7 @@ public class chart
             if(gap > 5)
             {
                 count += gap/5 -1;
-                bgMatrix[day][count] = new bg(0, bgs[i].getDate());
+                bgMatrix[day][count] = new BG(0, bgs[i].getDate());
                 countBGs[count] += 1;
             }
             else
@@ -78,7 +78,7 @@ public class chart
                 @Override
                 public void run()
                 {
-                    new bgChart(xData, averagedBGs, dateStart, dateEnd);
+                    new BGChart(xData, averagedBGs, dateStart, dateEnd);
                 }
             });
             chart.start();
@@ -98,24 +98,24 @@ public class chart
             ZonedDateTime currentDay = dateStart.toLocalDateTime().plusDays(i).atZone(ZoneId.systemDefault());
             ZonedDateTime nextDay = currentDay.plusDays(1);
 
-            tempBasal[] tempBasals = parseJSON.getTempBasal(urlString, currentDay, nextDay);
-            basalProfile[] basalProfiles = parseJSON.getBasalProfile(currentDay, nextDay);
+            TempBasal[] tempBasals = ParseJSON.getTempBasal(urlString, currentDay, nextDay);
+            BasalProfile[] basalProfiles = ParseJSON.getBasalProfile(currentDay, nextDay);
             ZonedDateTime tempCurrent =  currentDay.toLocalDateTime().atZone(ZoneId.systemDefault());
             int count = 0;
             while (basalProfiles.length == 0)
             {
                 tempCurrent = tempCurrent.minusDays(1);
-                basalProfiles = parseJSON.getBasalProfile(tempCurrent, nextDay);
+                basalProfiles = ParseJSON.getBasalProfile(tempCurrent, nextDay);
                 if(count > 2)
                 {
                     throw new java.lang.Error("ERROR IN AVERAGEBASALS IN CHART. THE BASALPROFILE WAS EMPTY FOR TOO LONG");
                 }
             }
 
-            ArrayList<tempBasal> netBasals = calculations.getNetBasals(tempBasals, basalProfiles);
+            ArrayList<TempBasal> netBasals = Calculations.getNetBasals(tempBasals, basalProfiles);
             Collections.sort(netBasals);
             int j = 0;
-            for(double insulin : calculations.getBasalAverage(netBasals, period))
+            for(double insulin : Calculations.getBasalAverage(netBasals, period))
             {
                 averaged[j] += insulin;
                 j++;
@@ -140,7 +140,7 @@ public class chart
                 @Override
                 public void run()
                 {
-                    new basalChart(xData, averaged, dateStart, dateEnd);
+                    new BasalChart(xData, averaged, dateStart, dateEnd);
                 }
             });
 
@@ -164,10 +164,10 @@ public class chart
             ZonedDateTime currentDay = dateStart.toLocalDateTime().plusDays(i).atZone(ZoneId.systemDefault());
             ZonedDateTime nextDay = currentDay.plusDays(1);
 
-            mealBolus[] mealBoluses = parseJSON.getMealBolus(urlString, currentDay, nextDay);
+            MealBolus[] mealBoluses = ParseJSON.getMealBolus(urlString, currentDay, nextDay);
             ZonedDateTime tempCurrent =  currentDay.toLocalDateTime().atZone(ZoneId.systemDefault());
 
-            double[] COB = calculations.getAverageCOB(mealBoluses, hourRate, currentDay, dateEnd);
+            double[] COB = Calculations.getAverageCOB(mealBoluses, hourRate, currentDay, dateEnd);
             for(int j = 0; j < COB.length; j++)
             {
                 if (COB[j] > 0)
@@ -213,9 +213,9 @@ public class chart
             mediumXData[i] = x;
             largeXData[i] = x;
         }
-        double[] smallYData = calculations.getSmallYData(smallXData);
-        double[] mediumYData = calculations.getMediumYData(mediumXData);
-        double[] largeYData = calculations.getLargeYData(largeXData);
+        double[] smallYData = Calculations.getSmallYData(smallXData);
+        double[] mediumYData = Calculations.getMediumYData(mediumXData);
+        double[] largeYData = Calculations.getLargeYData(largeXData);
 
 
         double[] smallMedium = new double[smallYData.length];
@@ -352,12 +352,12 @@ public class chart
         }
         avgDia = avgDia/288;
         double[] averagedBGs = averageBGs(url, dateStart, dateEnd, false);
-        modifyBG[] adjustedBGs = new modifyBG[576];
+        ModifyBG[] adjustedBGs = new ModifyBG[576];
         for(int i = 0; i < averagedBGs.length; i++)
         {
             int hour = i * 5 / 60;
             int minute = i * 5 - (60 * hour);
-            adjustedBGs[i+144] = new modifyBG(averagedBGs[i], LocalTime.of(hour, minute));
+            adjustedBGs[i+144] = new ModifyBG(averagedBGs[i], LocalTime.of(hour, minute));
         }
         for(int i = 288; i < 432; i++)
         {
@@ -367,10 +367,10 @@ public class chart
         {
             adjustedBGs[i+288] = adjustedBGs[i];
         }
-        modifyBG[] tempBGs = new modifyBG[adjustedBGs.length];
+        ModifyBG[] tempBGs = new ModifyBG[adjustedBGs.length];
         for(int i = 0; i < adjustedBGs.length; i++)
         {
-            tempBGs[i] = new modifyBG(adjustedBGs[i].getBg(), adjustedBGs[i].getTime());
+            tempBGs[i] = new ModifyBG(adjustedBGs[i].getBg(), adjustedBGs[i].getTime());
         }
         double[] xData = new double[averagedBGs.length];
         for(int i = 0; i < xData.length; i++)
@@ -425,7 +425,7 @@ public class chart
                         canRun = false;
                         for(int a = 0; a < adjustedBGs.length; a++)
                         {
-                            tempBGs[a] = new modifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                            tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
                         }
                     }
                     else
@@ -460,7 +460,7 @@ public class chart
                 //System.out.println(totalInsulin);
                 for(int a = 0; a < adjustedBGs.length; a++)
                 {
-                    tempBGs[a] = new modifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                    tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
                 }
                 //System.out.println(minimum);
             }
@@ -512,7 +512,7 @@ public class chart
                         insulin += .01;
                         for(int a = 0; a < adjustedBGs.length; a++)
                         {
-                            tempBGs[a] = new modifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                            tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
                         }
                     }
                     else
@@ -547,7 +547,7 @@ public class chart
                 //System.out.println(totalInsulin);
                 for(int a = 0; a < adjustedBGs.length; a++)
                 {
-                    tempBGs[a] = new modifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                    tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
                 }
                 //System.out.println(minimum);
             }
@@ -576,8 +576,8 @@ public class chart
         extraInsulinCorrected[0][1] = "Basals";
         extraInsulinCorrected[0][2] = "Basal w/ Temp";
         extraInsulinCorrected[0][3] = "Recommended";
-        basalProfile[] basalProfiles = parseJSON.getBasalProfile(dateStart, dateEnd);
-        basal[] basals = basalProfiles[basalProfiles.length-1].getProfile();
+        BasalProfile[] basalProfiles = ParseJSON.getBasalProfile(dateStart, dateEnd);
+        Basal[] basals = basalProfiles[basalProfiles.length-1].getProfile();
         for(int i = 0; i < basals.length; i++)
         {
             int pos = (basals[i].getTime().getHour() * 60 + basals[i].getTime().getMinute())/period;

@@ -25,7 +25,7 @@ public class COBChart
 
         JPanel chartPanel = new XChartPanel<XYChart>(chart);
 
-        main.getGUI().addChart(chartPanel);
+        Main.getGUI().addChart(chartPanel);
 
     }
 }

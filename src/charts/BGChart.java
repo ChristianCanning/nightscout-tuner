@@ -5,10 +5,10 @@ import org.knowm.xchart.XYChart;
 import javax.swing.*;
 import java.time.ZonedDateTime;
 
-public class bgChart
+public class BGChart
 {
 
-    public bgChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    public BGChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
         XYChart chart = QuickChart.getChart("BG Chart " + dateStart.toLocalDate() + " to " + dateEnd.toLocalDate(), "Minutes", "BG", "Averaged BGs", xData, yData);
 
@@ -17,6 +17,6 @@ public class bgChart
 
         JPanel chartPanel = new XChartPanel<XYChart>(chart);
 
-        main.getGUI().addChart(chartPanel);
+        Main.getGUI().addChart(chartPanel);
     }
 }
