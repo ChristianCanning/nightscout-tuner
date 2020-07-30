@@ -1,5 +1,6 @@
 import java.time.*;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import static java.lang.Float.NaN;
 
@@ -14,11 +15,9 @@ public class Calculations
         //account for the basal rate changing in the middle of the day. However, ideally the user will only specify date ranges in which they didn't change their basal profile.
 
         //Move the basal profile to an arrayList so that we can add a dummy basal.
-        ArrayList<Basal> profile =  new ArrayList<Basal>();
-        for(Basal i : basalProfiles[0].getProfile())
-        {
-            profile.add(i);
-        }
+        ArrayList<Basal> profile =  new ArrayList<>();
+        Collections.addAll(profile, basalProfiles[0].getProfile());
+
         // This is the dummy basal we add.
         // The dummy basal is simply used for the loop so that when we are on the true last basals(position profile.length-2),
         // we can still compare it to the end of the day because the last basal runs throughout the rest of the day. The actual rate
@@ -93,15 +92,13 @@ public class Calculations
     // the basal profile. Each entry in the ArrayList returned is in the format of a tempBasal, which has when the basal begins and how long it lasts.
     public static ArrayList<TempBasal> getNetBasals(TempBasal[] tempBasals, BasalProfile[] basalProfiles)
     {
-        ArrayList<TempBasal> netBasals = new ArrayList<TempBasal>(); // Create ArrayList to hold all the basals.
+        ArrayList<TempBasal> netBasals = new ArrayList<>(); // Create ArrayList to hold all the basals.
 
         //Take only one basal profile for this period. Hence why this won't work on multiple days if the basal rates were changed. This also means that the code won't
         //account for the basal rate changing in the middle of the day. However, ideally the user will only specify date ranges in which they didn't change their basal profile.
-        ArrayList<Basal> profile =  new ArrayList<Basal>();
-        for(Basal i : basalProfiles[0].getProfile())
-        {
-            profile.add(i);
-        }
+        ArrayList<Basal> profile =  new ArrayList<>();
+        Collections.addAll(profile, basalProfiles[0].getProfile());
+
         // This is the dummy basal we add.
         // The dummy basal is simply used for the loop so that when we are on the true last basals(position profile.length-2),
         // we can still compare it to the end of the day because the last basal runs throughout the rest of the day. The actual rate
@@ -171,6 +168,8 @@ public class Calculations
                 netBasals.add(new TempBasal(tempBasals[i].getRate(), tempBasals[i].getDuration(), tempBasals[i].getCreated_at()));
         }
         //This code assumes that after the last temp basal, the rest of the day was on a normal basal rate. This is *not a good way to do things*, but it will effect little overall.
+
+        Collections.sort(netBasals); // Make sure the netBasals are sorted based on their times, since they could be out of order
         return netBasals; // Return arraylist consisting of entries that show when a basal starts, and how long it lasts
     }
 
@@ -183,39 +182,31 @@ public class Calculations
         for(int i = 0; i < basalAverage.length; i++)
         {
             // For every position in basalAverage, loop through the netBasals
-            for(int j = 0; j < netBasals.size(); j++)
+            for (TempBasal netBasal : netBasals)
             {
                 // basalAverageStart is the start time of the current basalAverage position we are on.
-                LocalTime basalAverageStart = LocalTime.of(0,0).plusMinutes(i*period);
+                LocalTime basalAverageStart = LocalTime.of(0, 0).plusMinutes(i * period);
                 // basalAverageEnd is the end time of the current basalAverage position we are on (or the start time of the next basal average).
                 // The basalAverageEnd is nonInclusive, so that on our final loop, we don't go past 23 hours, 59 mins, and 59 seconds. If we went to
                 // 24 hours, then it would loop back around to 0 hours, 0 mins, and 0 seconds.
-                LocalTime basalAverageEnd = basalAverageStart.plusSeconds(period * 60 -1);
-                LocalTime netStart = netBasals.get(j).getCreated_at().toLocalTime(); // The start time of the current netBasal
-                LocalTime netEnd = netStart.plusSeconds((long)(netBasals.get(j).getDuration() * 60)); // End time of current netBasal
+                LocalTime basalAverageEnd = basalAverageStart.plusSeconds(period * 60 - 1);
+                LocalTime netStart = netBasal.getCreated_at().toLocalTime(); // The start time of the current netBasal
+                LocalTime netEnd = netStart.plusSeconds((long) (netBasal.getDuration() * 60)); // End time of current netBasal
 
-                if(netStart.compareTo(basalAverageStart) <= 0 && netEnd.compareTo(basalAverageEnd) >= 0)
-                {
+                if (netStart.compareTo(basalAverageStart) <= 0 && netEnd.compareTo(basalAverageEnd) >= 0) {
                     long duration = Duration.between(basalAverageStart, basalAverageEnd).getSeconds();
-                    basalAverage[i] += netBasals.get(j).getRate() * (duration / 3600.0);
-                }
-                else if(netStart.compareTo(basalAverageStart) >= 0 && netStart.compareTo(basalAverageEnd) <= 0)
-                {
+                    basalAverage[i] += netBasal.getRate() * (duration / 3600.0);
+                } else if (netStart.compareTo(basalAverageStart) >= 0 && netStart.compareTo(basalAverageEnd) <= 0) {
                     long duration;
-                    if(netEnd.compareTo(basalAverageEnd) >= 0)
-                    {
+                    if (netEnd.compareTo(basalAverageEnd) >= 0) {
                         duration = Duration.between(netStart, basalAverageEnd).getSeconds();
-                    }
-                    else
-                    {
+                    } else {
                         duration = Duration.between(netStart, netEnd).getSeconds();
                     }
-                    basalAverage[i] += netBasals.get(j).getRate() * (duration / 3600.0);
-                }
-                else if(netEnd.compareTo(basalAverageStart) >= 0 && netEnd.compareTo(basalAverageEnd) <= 0)
-                {
+                    basalAverage[i] += netBasal.getRate() * (duration / 3600.0);
+                } else if (netEnd.compareTo(basalAverageStart) >= 0 && netEnd.compareTo(basalAverageEnd) <= 0) {
                     long duration = Duration.between(basalAverageStart, netEnd).getSeconds();
-                    basalAverage[i] += netBasals.get(j).getRate() * (duration / 3600.0);
+                    basalAverage[i] += netBasal.getRate() * (duration / 3600.0);
                 }
             }
         }
@@ -346,7 +337,7 @@ public class Calculations
     }
 
     // Return the average Duration of Insulin activity for each 5 minute period in the day.
-    public static double[] getDia(CorrectionBolus[] correctionBoluses, String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, double weight, int insulinPool)
+    public static double[] getDIA(CorrectionBolus[] correctionBoluses, String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, double weight, int insulinPool)
     {
         double[] basalAverage = Chart.averageBasals(url, dateStart, dateEnd, 5, false); // Average basals every 5 minutes
         // Create array that keeps track of insulin for every 5 minute position. There would be 288 positions for every 5 minute position in the day,
@@ -357,31 +348,26 @@ public class Calculations
         // 10 units of insulin at 23:00, not all of it would be absorbed by 00:00, so we have to account for the rest of it by wrapping around to the beginning
         // of the next day. Just to be clear, there are only 288 modifyInsulin objects, so every position that references a specific time is also referenced somewhere else.
         // If I modify the insulin at 00:00, both positions 144 and 289 are affected.
-        ModifyInsulin[] insulinDeliveredArr = new ModifyInsulin[576];
+        CorrectionBolus[] insulinDeliveredArr = new CorrectionBolus[576];
 
         //Add the basal insulin for each 5 minute period to insulinDeliveredArr.
         for(int i = 0; i < basalAverage.length; i++)
         {
             int hour = i * 5 / 60;
             int minute = i * 5 - (60 * hour);
-            insulinDeliveredArr[i+144] = new ModifyInsulin(basalAverage[i]/12, LocalTime.of(hour, minute));
-        }
-        // Set positions 0-143 equal to positions 288-432
-        for(int i = 288; i < 432; i++)
-        {
-            insulinDeliveredArr[i-288] = insulinDeliveredArr[i];
-        }
-        // Set positions 432-575 equal to positions 144-287
-        for(int i = 144; i < 288; i++)
-        {
-            insulinDeliveredArr[i+288] = insulinDeliveredArr[i];
+            insulinDeliveredArr[i+144] = new CorrectionBolus(basalAverage[i]/12, LocalTime.of(hour, minute));
         }
 
+        // Set positions 0-143 equal to positions 288-432
+        System.arraycopy(insulinDeliveredArr, 288, insulinDeliveredArr, 0, 144);
+        // Set positions 432-575 equal to positions 144-287
+        System.arraycopy(insulinDeliveredArr, 144, insulinDeliveredArr, 432, 144);
+
         //Add correction bolus insulin to insulinDeliveredArr.
-        for(int i = 0; i < correctionBoluses.length; i++)
+        for (CorrectionBolus correctionBolus : correctionBoluses)
         {
-            int pos = (correctionBoluses[i].getTimestamp().getHour() * 60 + correctionBoluses[i].getTimestamp().getMinute()) / 5;
-            insulinDeliveredArr[pos+144].setAmount(insulinDeliveredArr[pos+144].getAmount() + correctionBoluses[i].getInsulin());
+            int pos = (correctionBolus.getTimestamp().getHour() * 60 + correctionBolus.getTimestamp().getMinute()) / 5;
+            insulinDeliveredArr[pos + 144].setInsulin(insulinDeliveredArr[pos + 144].getInsulin() + correctionBolus.getInsulin());
         }
 
         // Get the Duration of Insulin Activity for each 5 minute period. We mainly want to use DIA so that if a blood glucose point is lowered
@@ -389,28 +375,22 @@ public class Calculations
         // based on what the insulinPool is set to. If the insulinPool is set to 30 minutes, the duration of insulin activity for any 5 minute period
         // sums up the insulin of the 5 previous 5 minute periods and the current 5 minute period, and uses the total insulin to generate an insulin curve.
         // The length of the insulin curve would be the duration of insulin activity for the current 5 minute position.
-        double[] dia = new double[576];
+        double[] DIA = new double[576];
         for(int i = 144; i < 432; i++)
         {
             double insulin = 0;
             for(int j = i - insulinPool/5; j < i; j++)
             {
-                insulin += insulinDeliveredArr[j].getAmount();
+                insulin += insulinDeliveredArr[j].getInsulin();
             }
-            dia[i] += Chart.insulinCurve(insulin/weight).length * 15.0 / 60.0 / 5.0;
+            DIA[i] += Chart.GIRCurve(insulin/weight, false).length * 15.0 / 60.0 / 5.0;
         }
 
         // Set positions 0-143 equal to positions 288-432
-        for(int i = 288; i < 432; i++)
-        {
-            dia[i-288] = dia[i];
-        }
+        System.arraycopy(DIA, 288, DIA, 0, 144);
         // Set positions 432-575 equal to positions 144-287
-        for(int i = 144; i < 288; i++)
-        {
-            dia[i+288] = dia[i];
-        }
-        return dia;
+        System.arraycopy(DIA, 144, DIA, 432, 144);
+        return DIA;
     }
 
 

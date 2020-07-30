@@ -6,7 +6,6 @@ import java.text.DecimalFormat;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class Chart
 {
@@ -32,6 +31,7 @@ public class Chart
                 day++;
                 count = 0;
             }
+            // gap is the difference between the previous bg and the current one. If the gap is greater than 5 minutes, then we know there's a gap in readings
             int gap = (int)Duration.between(bgs[i-1].getDate().toLocalDateTime(), bgs[i].getDate().toLocalDateTime()).toMinutes();
             if(gap > 5)
             {
@@ -49,12 +49,10 @@ public class Chart
         }
 
         double[] summedBGs = new double[288]; // Array to sum up all the columns in the bgMatrix
-        for(int i = 0; i < bgMatrix.length; i++)
-        {
-            for(int j = 0; j < bgMatrix[i].length; j++)
-            {
-                if(bgMatrix[i][j] != null)
-                    summedBGs[j] += bgMatrix[i][j].getBG();
+        for (BG[] matrix : bgMatrix) {
+            for (int j = 0; j < matrix.length; j++) {
+                if (matrix[j] != null)
+                    summedBGs[j] += matrix[j].getBG();
             }
         }
         double[] averagedBGs = new double[288]; // Array to average each BG sum using the counts we got
@@ -73,61 +71,48 @@ public class Chart
         // Show the chart if we had showChart set to true when we called this method
         if(showChart)
         {
-            Thread chart = new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    new BGChart(xData, averagedBGs, dateStart, dateEnd);
-                }
-            });
+            Thread chart = new Thread(() -> new BGChart(xData, averagedBGs, dateStart, dateEnd));
             chart.start();
         }
 
         return averagedBGs;
-
-
     }
+
+    //Show average basals over the course of dateStart to dateEnd in intervals based on the period(in minutes). If  showChart is set to false,
+    // the chart is not shown, and it returns an array of basals averaged in intervals based on the period(in mins) given.
     public static double[] averageBasals(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd, int period, boolean showChart)
     {
+        int days = (int)ChronoUnit.DAYS.between(dateStart.toLocalDate(), dateEnd.toLocalDate()); // Number of days between dateStart and dateEnd
+        double[] averagedBasals = new double[1440/period]; // Array to hold average basals
 
-        int diff = (int)ChronoUnit.DAYS.between(dateStart.toLocalDate(), dateEnd.toLocalDate());
-        double[] averaged = new double[1440/period+1];
-        for(int i = 0; i < diff; i++)
+        // Loop through to get the net basals(basals and temp basals together) for one day at a time, because Calculations.getNetBasals()
+        // can only reliably get the basals for one day at a time. We add the basals one day at a time to the averagedBasals
+        for(int i = 0; i < days; i++)
         {
             ZonedDateTime currentDay = dateStart.toLocalDateTime().plusDays(i).atZone(ZoneId.systemDefault());
             ZonedDateTime nextDay = currentDay.plusDays(1);
 
             TempBasal[] tempBasals = ParseJSON.getTempBasal(urlString, currentDay, nextDay);
             BasalProfile[] basalProfiles = ParseJSON.getBasalProfile(currentDay, nextDay);
-            ZonedDateTime tempCurrent =  currentDay.toLocalDateTime().atZone(ZoneId.systemDefault());
-            int count = 0;
-            while (basalProfiles.length == 0)
-            {
-                tempCurrent = tempCurrent.minusDays(1);
-                basalProfiles = ParseJSON.getBasalProfile(tempCurrent, nextDay);
-                if(count > 2)
-                {
-                    throw new java.lang.Error("ERROR IN AVERAGEBASALS IN CHART. THE BASALPROFILE WAS EMPTY FOR TOO LONG");
-                }
-            }
 
             ArrayList<TempBasal> netBasals = Calculations.getNetBasals(tempBasals, basalProfiles);
-            Collections.sort(netBasals);
             int j = 0;
+            // Add basal averages for the currentDay to our averagedBasals array
             for(double insulin : Calculations.getBasalAverage(netBasals, period))
             {
-                averaged[j] += insulin;
+                averagedBasals[j] += insulin;
                 j++;
             }
         }
-        for(int i = 0; i < averaged.length-1; i++)
+
+        // Turn the sums of the basals into averages
+        for(int i = 0; i < averagedBasals.length; i++)
         {
-            averaged[i] = averaged[i]/diff * (60.0/period);
+            averagedBasals[i] = averagedBasals[i]/days * (60.0/period);
         }
 
-        averaged[1440/period] = averaged[1440/period-1];
-        double[] xData = new double[1440/period+1];
+        // Generate the xData for our chart
+        double[] xData = new double[averagedBasals.length];
         for(int i =0; i < xData.length; i++)
         {
             xData[i] = i;
@@ -135,37 +120,30 @@ public class Chart
 
         if(showChart)
         {
-            Thread chart = new Thread(new Runnable()
-            {
-                @Override
-                public void run()
-                {
-                    new BasalChart(xData, averaged, dateStart, dateEnd);
-                }
-            });
+            Thread chart = new Thread(() -> new BasalChart(xData, averagedBasals, dateStart, dateEnd));
 
             chart.start();
         }
 
-        double[] averagedReturned = new double[averaged.length-1];
-        for(int i = 0; i < averagedReturned.length; i++)
-        {
-            averagedReturned[i] = averaged[i];
-        }
-        return averagedReturned;
+        return averagedBasals;
     }
+
+    // Display a chart with the average Carbs on Board updated every minute over the course of the dates given.
     public static void averageCOB(String urlString, ZonedDateTime dateStart, ZonedDateTime dateEnd, double hourRate)
     {
-        int diff = (int)ChronoUnit.DAYS.between(dateStart.toLocalDate(), dateEnd.toLocalDate());
-        double[] averaged = new double[1440];
-        int[] count = new int[1440];
-        for(int i = 0; i < diff; i++)
+        // The hourRate is how many carbs can be absorbed by the user within an hour
+        int days = (int)ChronoUnit.DAYS.between(dateStart.toLocalDate(), dateEnd.toLocalDate()); // Number of days
+        double[] averaged = new double[1440]; // Array to hold average COB for every minute in the day
+        int[] count = new int[1440]; // Array to hold the count so we can divide each position in averaged by the correct amount to get an average
+
+        // Loop goes one day at a time, getting the carbs on board for the day and adding it to the correct positions in the averaged array.
+        // This creates a sum of the carbs on board for each position.
+        for(int i = 0; i < days; i++)
         {
             ZonedDateTime currentDay = dateStart.toLocalDateTime().plusDays(i).atZone(ZoneId.systemDefault());
             ZonedDateTime nextDay = currentDay.plusDays(1);
 
             MealBolus[] mealBoluses = ParseJSON.getMealBolus(urlString, currentDay, nextDay);
-            ZonedDateTime tempCurrent =  currentDay.toLocalDateTime().atZone(ZoneId.systemDefault());
 
             double[] COB = Calculations.getAverageCOB(mealBoluses, hourRate, currentDay, dateEnd);
             for(int j = 0; j < COB.length; j++)
@@ -177,56 +155,60 @@ public class Chart
                 }
             }
         }
+
+        // Divide the sums of the COB by the count to get the actual average
         for(int i = 0; i < averaged.length; i++)
         {
             averaged[i] = averaged[i]/count[i];
         }
 
+        // Create the xData for the chart
         double[] xData = new double[1440];
         for(int i =0; i < xData.length; i++)
         {
             xData[i] = i;
         }
 
-        Thread chart = new Thread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                new COBChart(xData, averaged, dateStart, dateEnd);
-            }
-        });
+        Thread chart = new Thread(() -> new COBChart(xData, averaged, dateStart, dateEnd));
 
         chart.start();
 
     }
 
-    public static double[] insulinCurve(double insulinKG)
+    // Returns the Glucose Infusion Rate (GIR) curve for the insulin/kg given.
+    public static double[] GIRCurve(double insulinKG, boolean showChart)
     {
-        double[] smallXData = new double[1920];
-        double[] mediumXData = new double[1920];
-        double[] largeXData = new double[1920];
+        //insulinKG refers to insulin/kg (insulin divided by kilograms)
+
+        //Note: Anywhere in my code, small refers to the GIR curve for .1 units/kg and medium refers to the GIR curve for .2 units/kg
+
+        double[] smallXData = new double[1920]; // Generate xData for .1 units/kg GIR curve updating every 15 seconds over an 8 hour duration
+        double[] mediumXData = new double[1920]; // Generate xData for .2 units/kg GIR curve updating every 15 seconds over an 8 hour duration
+
+        // Fill up each xData with the appropriate values. The xData for each has units of hours, not seconds, not minutes. So when each xData
+        // position increases by 15 seconds, we are actually increasing it by ~.00416667 hours.
         for(int i = 0; i < 1920; i++)
         {
             double x = i * (15.0/3600);
             smallXData[i] = x;
             mediumXData[i] = x;
-            largeXData[i] = x;
         }
-        double[] smallYData = Calculations.getSmallYData(smallXData);
-        double[] mediumYData = Calculations.getMediumYData(mediumXData);
-        double[] largeYData = Calculations.getLargeYData(largeXData);
+        double[] smallYData = Calculations.getSmallYData(smallXData); // Populate the yData for the .1 units/kg curve
+        double[] mediumYData = Calculations.getMediumYData(mediumXData); // Populate the yData for the .2 units/kg curve
 
-
+        // smallMedium refers to small/medium (small divided by medium). For each point in the .1 units/kg GIR curve, it is divided by
+        // the corresponding point in the .2 units/kg GIR curve. This gets the ratio of each point between the .1 units/kg curve and the .2 units/kg curve
         double[] smallMedium = new double[smallYData.length];
         for(int i = 0; i < smallMedium.length; i++)
         {
             smallMedium[i] = smallYData[i]/mediumYData[i];
         }
 
-        double area = 0;
-        double[] newline = new double[1920];
-        for(int i = 0; i < newline.length; i++)
+        //Create an array to hold the y data for our new curve that we need to generate based on what the insulinKG was input as
+        double[] newCurveY = new double[1920];
+        // ****NOTE**** I need to explain the calculations below properly, so I'll come back and explain this once I complete the github page
+        // for this project
+        for(int i = 0; i < newCurveY.length; i++)
         {
             //y = -1.4426950408889700ln(x) - 3.3219280948873900
             double pow = -1.44269504088897 * Math.log(insulinKG) - 3.32192809488739;
@@ -236,30 +218,27 @@ public class Chart
             double yDiff = Math.pow(yRate, pow) * smallMedium[i];
             double yMultiplier = Math.pow(yDiff, pow);
 
-            if(!Double.isNaN((15.0) * (smallYData[i] * yMultiplier)) && (15.0) * (smallYData[i] * yMultiplier) > 0)
-            {
-                area += (15.0/3600) * (smallYData[i] * yMultiplier);
-                //System.out.println(area += (15.0/3600) * (smallYData[i] * yMultiplier));
-            }
             double value = smallYData[i] * yMultiplier;
-            if(i != 0 && Math.abs(newline[i-1] - value) > .05)
-                newline[i] = newline[i-1];
+            if(i != 0 && Math.abs(newCurveY[i-1] - value) > .05)
+                newCurveY[i] = newCurveY[i-1];
             else
-                newline[i] = value;
-
+                newCurveY[i] = value;
         }
-        //System.out.println(area);
+
+        // Find the peak value in the new GIR curve that we just generated based off of the insulinKG
         double peakValue = 0;
-        for(double i : newline)
+        for(double i : newCurveY)
         {
             if(i > peakValue)
                 peakValue = i;
         }
+
+        // 'stop' refers to when we want to stop the curve that we just generated. The curve will be 8 hours long, but after a certain point in
+        // that 8 hours, the y data for the GIR curve is almost 0, so we need to stop it. Right now, I've decided that a GIR curve is essentially
+        // complete once its y data reaches 1% of its peak value.
         double stop = peakValue *.01;
-        double currentArea = 0;
-        int count = 0;
-        //System.out.println(stop);
-        for(int i = 0; i < newline.length; i++)
+        int count = 0; // count keeps track of how many positions we are going to include in the curve (the number of positions before stop)
+        for(int i = 0; i < newCurveY.length; i++)
         {
             //y = -1.4426950408889700ln(x) - 3.3219280948873900
             double pow = -1.44269504088897 * Math.log(insulinKG) - 3.32192809488739;
@@ -267,116 +246,104 @@ public class Chart
             double yRate = -0.0455826595478078 * smallXData[i] + 0.9205489113464720;
             double yDiff = Math.pow(yRate, pow) * smallMedium[i];
             double yMultiplier = Math.pow(yDiff, pow);
-            //System.out.println(smallXData[i] + ", " + (smallYData[i] * yMultiplier));
 
             double value = smallYData[i] * yMultiplier;
-            if(i != 0 && Math.abs(newline[i-1] - value) > .05)
-                newline[i] = newline[i-1];
+            if(i != 0 && Math.abs(newCurveY[i-1] - value) > .05)
+                newCurveY[i] = newCurveY[i-1];
             else
-                newline[i] = value;
+                newCurveY[i] = value;
 
-
-
-            if(!Double.isNaN((15.0/3600) * (smallYData[i] * yMultiplier))&& (15.0) * (smallYData[i] * yMultiplier) > 0)
-            {
-                currentArea += (15.0/3600) * (smallYData[i] * yMultiplier);
+            if(!Double.isNaN((15.0/3600) * (smallYData[i] * yMultiplier)) && (15.0) * (smallYData[i] * yMultiplier) > 0)
                 count++;
-            }
-            if(i > 50 && newline[i] < stop)
-                i = 100000;
-
-
-            //System.out.println(currentArea);
-            //System.out.println(area);
+            if(i > 50 && newCurveY[i] < stop)
+                i = 9999999;
         }
-        double[] newlineChopY = new double[count];
-        double[] newlineChopX = new double[count];
-        int start = 0;
-        for(int i = 0; i < newlineChopY.length; i++)
+
+        //Below we copy over the GIR curve for our insulinKG, but we "chop" off the points after the yData goes below 1% of the peak in the GIR curve.
+        // We do this using our count that we got for the number of positions that exist before the yData goes below 1% of its peak.
+        double[] newCurveChopY = new double[count];
+        double[] newCurveChopX = new double[count];
+        int count0 = 0; // Count the number of data points that are below 0 at the beginning of our curve. We use this so that we don't include them
+        for(int i = 0; i < newCurveChopY.length+count0; i++)
         {
-            double x = (i-start) * (15.0/3600);
-            if(newline[i] > 0)
+            double x = (i-count0) * (15.0/3600);
+            if(newCurveY[i] > 0)
             {
-                newlineChopY[i-start] += newline[i];
-                newlineChopX[i-start] += x;
+                newCurveChopY[i-count0] += newCurveY[i];
+                newCurveChopX[i-count0] += x;
             }
             else
             {
-                start++;
+                count0++;
             }
         }
-        //System.out.println(area/3600.0);
 
-        //XYChart chart = new XYChartBuilder().width(800).height(600).title("Charts").xAxisTitle("Nominal time (h)").yAxisTitle("GIR(mg/(kg*min))").build();
-        //chart.addSeries(".1 U/KG", smallXData, smallYData);
-        //chart.addSeries(".2 U/KG", mediumXData, mediumYData);
-        //chart.addSeries(".4 U/KG", largeXData, largeYData);
-        //chart.addSeries("Comparison", newlineChopX, newlineChopY);
-        //new SwingWrapper(chart).displayChart();
+        if(showChart)
+        {
+            XYChart chart = new XYChartBuilder().width(800).height(600).title("Charts").xAxisTitle("Nominal time (h)").yAxisTitle("GIR(mg/(kg*min))").build();
+            chart.addSeries(insulinKG + "", newCurveChopX, newCurveChopY);
+            new SwingWrapper(chart).displayChart();
+        }
 
-        return newlineChopY;
+        return newCurveChopY;
     }
-    public static double getInsulinCurvePercentage(double[] curveY, double currentTime)
+
+    // Return the percentage of the GIR curve that the currentTime is plus the next 5 minutes.
+    public static double getGIRCurvePercentage(double[] curveY, double currentTime)
     {
-        //CurrentTime has to be in hours
-        int pos = 0;
-        double[] curveX = new double[curveY.length];
-        for(int i = 0; i < curveX.length; i++)
-        {
-            curveX[i] = i * (15.0/3600);
-            if((i * (15.0/3600)) == currentTime)
-            {
-                pos = i;
-            }
-        }
+        // curveY is the yData for the GIR curve for whatever insulin/kg we are using.
+        //The currentTime is the time since the insulin was delivered on the GIR curve. The currentTime is in the format of hours.
+
+        //get the x position that the currentTime would fall on the GIR curve. We divide the currentTime(which is in hours) by how many
+        // hours 15 seconds is. (15 seconds / 60 seconds in a minute / 60 minutes in an hour)
+        int pos = (int)Math.round(currentTime/(15.0/3600));
+
+        // Get the total area under the GIR curve
         double totalArea = 0;
-        for(int i = 0; i < curveY.length; i++)
-        {
-            totalArea += curveY[i] * (15.0/3600);
+        for (double v : curveY) {
+            totalArea += v * (15.0 / 3600);
         }
+
+        // Get our partial area under the GIR curve for the currentTime plus the next 5 minutes
         double partialArea = 0;
         for(int i = 0; i < 20 && i+pos < curveY.length; i++)
         {
             partialArea += curveY[pos+i] * (15.0/3600);
         }
+
+        // Return what percentage of the GIR curve our currentTime plus the next 5 minutes would be.
         return partialArea/totalArea;
     }
 
-    public static String[][] adjustAverageBGs(String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, int min, double isf, int period, double weight, double[] dia, double[] basalAverages)
+    public static String[][] adjustAverageBGs(String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, int min, double isf, int period, double weight, double[] DIA, double[] basalAverages)
     {
-        //min = 120;
-        double avgDia = 0;
+        System.out.println("Adjusting BGs... ");
+
+        double averageDIA = 0;
         for(int i = 144; i < 432; i++)
         {
-            avgDia += dia[i];
+            averageDIA += DIA[i];
         }
-        avgDia = avgDia/288;
+        averageDIA = averageDIA/288;
+
         double[] averagedBGs = averageBGs(url, dateStart, dateEnd, false);
-        ModifyBG[] adjustedBGs = new ModifyBG[576];
+        BG[] adjustedBGs = new BG[576];
         for(int i = 0; i < averagedBGs.length; i++)
         {
             int hour = i * 5 / 60;
             int minute = i * 5 - (60 * hour);
-            adjustedBGs[i+144] = new ModifyBG(averagedBGs[i], LocalTime.of(hour, minute));
+            adjustedBGs[i+144] = new BG(averagedBGs[i], LocalTime.of(hour, minute));
         }
-        for(int i = 288; i < 432; i++)
-        {
-            adjustedBGs[i-288] = adjustedBGs[i];
-        }
-        for(int i = 144; i < 288; i++)
-        {
-            adjustedBGs[i+288] = adjustedBGs[i];
-        }
-        ModifyBG[] tempBGs = new ModifyBG[adjustedBGs.length];
+        System.arraycopy(adjustedBGs, 288, adjustedBGs, 0, 144);
+        System.arraycopy(adjustedBGs, 144, adjustedBGs, 432, 144);
+        BG[] tempBGs = new BG[adjustedBGs.length];
         for(int i = 0; i < adjustedBGs.length; i++)
         {
-            tempBGs[i] = new ModifyBG(adjustedBGs[i].getBg(), adjustedBGs[i].getTime());
+            tempBGs[i] = new BG(adjustedBGs[i].getBG(), adjustedBGs[i].getTime());
         }
         double[] xData = new double[averagedBGs.length];
         for(int i = 0; i < xData.length; i++)
             xData[i] = i * 5;
-
-
 
 
         double totalInsulin = 0;
@@ -385,37 +352,33 @@ public class Chart
         double[] extraInsulin = new double[1440/period];
         while(totalDrop - previousTotalDrop > 1)
         {
+            System.out.println(totalInsulin + " units applied");
             previousTotalDrop = totalDrop;
-            System.out.println(totalInsulin);
-            System.out.println(totalDrop);
             for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
             {
-                //System.out.println(i);
-                //System.out.println(i);
                 double insulin = .01;
                 boolean canRun = false;
                 while(!canRun)
                 {
-                    //System.out.println(insulin);
                     canRun = true;
                     double drop = insulin * isf;
-                    double[] curveY = insulinCurve(insulin/weight);
+                    double[] curveY = GIRCurve(insulin/weight, false);
                     for(int j = i; j < i + period/5; j++)
                     {
-                        double length = dia[j];
+                        double length = DIA[j];
                         for(int a = j - 1; length <= 0; a--)
                         {
-                            length = dia[a];
+                            length = DIA[a];
                         }
                         for(int k = j; k < length + j; k++)
                         {
                             double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getInsulinCurvePercentage(curveY, currentTime);
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
                             for(int l = k; l < length + j; l++)
                             {
-                                if(tempBGs[l].getBg() - (drop * percentage) < min)
+                                if(tempBGs[l].getBG() - (drop * percentage) < min)
                                     canRun = false;
-                                tempBGs[l].setBg(tempBGs[l].getBg() - (drop * percentage));
+                                tempBGs[l].setBg(tempBGs[l].getBG() - (drop * percentage));
                             }
                         }
                     }
@@ -425,7 +388,7 @@ public class Chart
                         canRun = false;
                         for(int a = 0; a < adjustedBGs.length; a++)
                         {
-                            tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                            tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
                         }
                     }
                     else
@@ -441,28 +404,25 @@ public class Chart
                     {
                         double drop = insulin * isf;
                         totalDrop += drop;
-                        double[] curveY = insulinCurve(insulin/weight);
-                        double length = dia[j];
+                        double[] curveY = GIRCurve(insulin/weight, false);
+                        double length = DIA[j];
                         for(int k = j; k < length + j; k++)
                         {
                             double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getInsulinCurvePercentage(curveY, currentTime);
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
                             totalInsulin += insulin * percentage;
                             extraInsulin[(i-144)/(period/5)] += insulin * percentage;
                             for(int l = k; l < length + j; l++)
                             {
-                                adjustedBGs[l].setBg(adjustedBGs[l].getBg() - (drop * percentage));
+                                adjustedBGs[l].setBg(adjustedBGs[l].getBG() - (drop * percentage));
                             }
                         }
                     }
                 }
-
-                //System.out.println(totalInsulin);
                 for(int a = 0; a < adjustedBGs.length; a++)
                 {
-                    tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                    tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
                 }
-                //System.out.println(minimum);
             }
         }
 
@@ -470,39 +430,40 @@ public class Chart
         double previousTotalRaise = -4;
         while(totalRaise - previousTotalRaise > 1)
         {
+            System.out.println(totalInsulin + " units applied");
             previousTotalRaise = totalRaise;
-            System.out.println(totalInsulin);
-            System.out.println(totalRaise);
             for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
             {
                 double insulin = .01;
                 boolean canRun = false;
                 while(!canRun)
                 {
-                    //System.out.println(insulin);
                     canRun = true;
                     double raise = insulin * isf;
-                    double[] curveY = insulinCurve(insulin/weight);
+                    double[] curveY = GIRCurve(insulin/weight, false);
                     for(int j = i; j < i + period/5; j++)
                     {
-                        double length = dia[j];
+                        double length = DIA[j];
                         for(int a = j - 1; length <= 0; a--)
                         {
-                            length = dia[a];
+                            length = DIA[a];
                         }
                         for(int k = j; k < length + j; k++)
                         {
                             double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getInsulinCurvePercentage(curveY, currentTime);
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
                             for(int l = k; l < length + j; l++)
                             {
-                                tempBGs[l].setBg(tempBGs[l].getBg() + (raise * percentage));
+                                tempBGs[l].setBg(tempBGs[l].getBG() + (raise * percentage));
                             }
                             for(int l = k; l < length + j; l++)
                             {
                                 double currentInsulin = basalAverages[(i-144)/(period/5)] * (60.0/period);
-                                if(tempBGs[l].getBg() > min ||  currentInsulin - (insulin * (period/5))*(60.0/period) < currentInsulin/2.0)
+                                if (tempBGs[l].getBG() > min || currentInsulin - (insulin * (period / 5.0)) * (60.0 / period) < currentInsulin / 2.0)
+                                {
                                     canRun = false;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -512,7 +473,7 @@ public class Chart
                         insulin += .01;
                         for(int a = 0; a < adjustedBGs.length; a++)
                         {
-                            tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                            tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
                         }
                     }
                     else
@@ -528,48 +489,57 @@ public class Chart
                     {
                         double raise = insulin * isf;
                         totalInsulin -= insulin;
-                        double[] curveY = insulinCurve(insulin/weight);
-                        double length = dia[j];
+                        double[] curveY = GIRCurve(insulin/weight, false);
+                        double length = DIA[j];
                         for(int k = j; k < length + j; k++)
                         {
                             double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getInsulinCurvePercentage(curveY, currentTime);
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
                             totalRaise += raise * percentage;
                             extraInsulin[(i-144)/(period/5)] -= insulin * percentage;
                             for(int l = k; l < length + j; l++)
                             {
-                                adjustedBGs[l].setBg(adjustedBGs[l].getBg() + (raise * percentage));
+                                adjustedBGs[l].setBg(adjustedBGs[l].getBG() + (raise * percentage));
                             }
                         }
                     }
                 }
 
-                //System.out.println(totalInsulin);
                 for(int a = 0; a < adjustedBGs.length; a++)
                 {
-                    tempBGs[a] = new ModifyBG(adjustedBGs[a].getBg(), adjustedBGs[a].getTime());
+                    tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
                 }
-                //System.out.println(minimum);
             }
         }
 
-        double averageSum = 0;
+        double averagedSum = 0;
+        double countAverageBGs = 0;
         for(double i : averagedBGs)
         {
             if(!Double.isNaN(i))
-                averageSum += i;
+            {
+                averagedSum += i;
+                countAverageBGs++;
+            }
         }
-        System.out.println("AVG BG before: " + averageSum/averagedBGs.length);
-        double adjustSum = 0;
+
+        double adjustedSum = 0;
+        double countAdjustedBGs = 0;
         for(int i = 144; i < 432; i++)
         {
-            if(!Double.isNaN(adjustedBGs[i].getBg()))
-                adjustSum += adjustedBGs[i].getBg();
+            if(!Double.isNaN(adjustedBGs[i].getBG()))
+            {
+                adjustedSum += adjustedBGs[i].getBG();
+                countAdjustedBGs++;
+            }
         }
-        System.out.println("AVG BG after: " + adjustSum/288);
-        System.out.println("was: " + totalInsulin);
-        double actualInsulin = (averageSum/averagedBGs.length - adjustSum/288) / isf * (288/avgDia);
-        System.out.println("should have been: " + actualInsulin);
+
+        System.out.println("AVG BG before: " + averagedSum/countAverageBGs);
+        System.out.println("AVG BG after: " + adjustedSum/countAdjustedBGs);
+        System.out.println("System Recommends: " + totalInsulin + " total units");
+        double actualInsulin = (averagedSum/countAverageBGs - adjustedSum/countAdjustedBGs) / isf * (288/averageDIA);
+        System.out.println("Insulin we can deliver is: " + actualInsulin + " total units");
+
 
         String[][] extraInsulinCorrected = new String[1440/period+1][4];
         DecimalFormat df = new DecimalFormat("#.##");
@@ -578,10 +548,9 @@ public class Chart
         extraInsulinCorrected[0][3] = "Recommended";
         BasalProfile[] basalProfiles = ParseJSON.getBasalProfile(dateStart, dateEnd);
         Basal[] basals = basalProfiles[basalProfiles.length-1].getProfile();
-        for(int i = 0; i < basals.length; i++)
-        {
-            int pos = (basals[i].getTime().getHour() * 60 + basals[i].getTime().getMinute())/period;
-            extraInsulinCorrected[pos+1][1] = basals[i].getValue() + "";
+        for (Basal basal : basals) {
+            int pos = (basal.getTime().getHour() * 60 + basal.getTime().getMinute()) / period;
+            extraInsulinCorrected[pos + 1][1] = basal.getValue() + "";
         }
         for(int i = 1; i < extraInsulinCorrected.length; i++)
         {
@@ -601,13 +570,10 @@ public class Chart
             extraInsulinCorrected[i+1][3] = df.format(extraInsulin[i] * (actualInsulin/totalInsulin) * (60.0/period) + basalAverages[i]);
         }
 
-
-
-
         double[] test = new double[288];
         for(int i = 144; i < 432; i++)
         {
-            test[i-144] = adjustedBGs[i].getBg();
+            test[i-144] = adjustedBGs[i].getBG();
         }
         XYChart chart = new XYChartBuilder().width(800).height(600).title("Charts").xAxisTitle("Nominal time (h)").yAxisTitle("GIR(mg/(kg*min))").build();
         chart.getStyler().setYAxisMax(250.0);

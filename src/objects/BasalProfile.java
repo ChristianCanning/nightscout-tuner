@@ -6,8 +6,8 @@ import java.time.*;
 // was not updated.
 public class BasalProfile
 {
-    private Basal[] profile;
-    private ZonedDateTime startDate;
+    private final Basal[] profile;
+    private final ZonedDateTime startDate;
 
     public BasalProfile(Basal[] profile, ZonedDateTime startDate)
     {

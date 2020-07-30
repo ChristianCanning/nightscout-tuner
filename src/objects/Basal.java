@@ -1,11 +1,11 @@
 import java.time.*;
 
-// The Basal object holds basals for the BasalProfile. A basal consists of the start time, known as 'time' and the
-// insulin rate (insulin delivered per hour), known as 'value'.
+// The Basal object holds basals (insulin delivered in a 1 hour period) for the BasalProfile. A basal consists of the time of day that it
+// starts being active, known as 'time' and the insulin rate (insulin delivered per hour), known as 'value'.
 public class Basal
 {
-    private LocalTime time;
-    private double value;
+    private final LocalTime time;
+    private final double value;
 
     public Basal(double value, LocalTime time)
     {

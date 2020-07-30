@@ -1,9 +1,11 @@
 import java.time.*;
 
+// The ISF (Insulin Sensitivity Factor) object which holds the ISF value, known as 'value' and the time of day at which it starts being active,
+// known as 'time'.
 public class ISF
 {
-    private double value;
-    private LocalTime time;
+    private final double value;
+    private final LocalTime time;
 
     public ISF(double value, LocalTime time)
     {
