@@ -1,0 +1,9 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="nightscout-tunerV2:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/nightscout_tunerV2_jar</output-path>
+    <root id="archive" name="nightscout-tunerV2.jar">
+      <element id="module-output" name="nightscout-tunerV2" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/src/libraries/json-20200518.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

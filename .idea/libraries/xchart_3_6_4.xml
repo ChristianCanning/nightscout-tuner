@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="xchart-3.6.4">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/src/libraries/xchart-3.6.4.jar!/" />
+      <root url="jar://$PROJECT_DIR$/src/libraries/miglayout-4.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
