@@ -57,10 +57,10 @@ public class GUI implements ActionListener
         ZonedDateTime currentDay = ZonedDateTime.now();
         String[] availableDaysEnd = new String[60];
         String[] availableDaysStart = new String[60];
-        for (int i = 0; i < 60; i++)
+        for (int i = 1; i < 61; i++)
         {
-            availableDaysEnd[i] = currentDay.minusDays(i).toLocalDate().toString();
-            availableDaysStart[i] = currentDay.minusDays(i+1).toLocalDate().toString();
+            availableDaysEnd[i-1] = currentDay.minusDays(i).toLocalDate().toString();
+            availableDaysStart[i-1] = currentDay.minusDays(i).toLocalDate().toString();
         }
 
         // The rest of the gui() constructor code sets how the gui will be placed and displayed.
@@ -132,16 +132,15 @@ public class GUI implements ActionListener
         basalPanel = new JPanel();
         basalPanel.setLayout(new MigLayout());
         basalScroll = new JScrollPane(basalPanel);
-        basalScroll.setPreferredSize(new Dimension(360, 420));
 
         leftPanel = new JPanel();
         leftPanel.setLayout(new MigLayout());
-        leftPanel.setPreferredSize(new Dimension(360, 620));
+        leftPanel.setPreferredSize(new Dimension(360, 700));
         leftPanel.add(panel1, "wrap");
         leftPanel.add(panel2, "wrap");
         leftPanel.add(panel3, "wrap");
         leftPanel.add(panel4, "wrap");
-        leftPanel.add(basalScroll);
+        leftPanel.add(basalScroll, "width :360:, height :420:");
 
         chartPanel = new JPanel();
         chartPanel.setLayout(new MigLayout());
@@ -175,7 +174,9 @@ public class GUI implements ActionListener
     {
         urlString = urlInput.getText();
         dateStart = LocalDate.parse(dateStartBox.getSelectedItem().toString()).atStartOfDay().atZone(ZoneId.systemDefault());
-        dateEnd = LocalDate.parse(dateEndBox.getSelectedItem().toString()).atStartOfDay().atZone(ZoneId.systemDefault());
+        //Add one day to the dateEnd because it is normally non-inclusive. Adding a day, makes sure that if the user input
+        //the same day for dateStart and dateEnd, that it will actually show the output for that one day, rather than showing nothing
+        dateEnd = LocalDate.parse(dateEndBox.getSelectedItem().toString()).atStartOfDay().atZone(ZoneId.systemDefault()).plusDays(1);
 
         // Only download the profile if we haven't already downloaded it. Since the entire profile is downloaded from nightscout,
         // which disregards what our start and end date are, we don't want to keep downloading the same thing every time the user
@@ -185,42 +186,40 @@ public class GUI implements ActionListener
         this.chartPanel.removeAll(); // Clear the chartPanel
         this.basalPanel.removeAll(); // Clear the basalPanel
 
+        Thread display = new Thread(() ->
+        {
+            if(selectAdjustBasalRates.isSelected())
+            {
+                int period = Integer.parseInt((String)basalChartPeriod.getSelectedItem()); // Choose to adjust basals by 30 or 60 minutes
+                double weight = Double.parseDouble(weightInput.getText()); // Weight of user in KG
+                double[] basalAverages = Chart.averageBasals(urlString, dateStart, dateEnd, period, false);
+                // Get the Duration of Insulin Activity for every 5 minute period in the day.
+                // Each 5 minute period takes into account the previous minutes based on what the insulinPoolInput is.
+                double[] DIA = Calculations.getDIA(ParseJSON.getCorrectionBolus(urlString, dateStart, dateEnd), urlString, dateStart, dateEnd, weight, Integer.parseInt(insulinPoolInput.getText()));
+                // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
+                // and the third has the basals that actually ran, which includes the profile basals and temp basals
+                String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
+                String[] columnNames = {"", "", "", ""}; // Let Swing know to show a table with 4 columns
+                basalTable = new JTable(correctedBasals, columnNames);
+                basalPanel.add(basalTable);
+                frame.setVisible(true);
+            }
+        });
+        display.start();
+
+        // Do nothing until we finish adjusting the basals and displaying the chart
+        while(display.isAlive())
+        {
+
+        }
+
         // If a chart is selected, run the code to display the chart
         if(selectBasalChart.isSelected())
             Chart.averageBasals(urlString, dateStart, dateEnd, Integer.parseInt((String)basalChartPeriod.getSelectedItem()), true);
-        if(selectBGChart.isSelected())
+        if(selectBGChart.isSelected() && !selectAdjustBasalRates.isSelected())
             Chart.averageBGs(urlString, dateStart, dateEnd, true);
         if(selectCOBChart.isSelected())
             Chart.averageCOB(urlString, dateStart, dateEnd, Double.parseDouble(COBChartRateInput.getText()));
-
-
-        Thread display = new Thread(new Runnable()
-        {
-            @Override
-            public void run()
-            {
-                if(selectAdjustBasalRates.isSelected())
-                {
-                    int period = Integer.parseInt((String)basalChartPeriod.getSelectedItem()); // Choose to adjust basals by 30 or 60 minutes
-                    double weight = Double.parseDouble(weightInput.getText()); // Weight of user in KG
-                    double[] basalAverages = Chart.averageBasals(urlString, dateStart, dateEnd, period, false);
-                    // Get the Duration of Insulin Activity for every 5 minute period in the day.
-                    // Each 5 minute period takes into account the previous minutes based on what the insulinPoolInput is.
-                    double[] DIA = Calculations.getDIA(ParseJSON.getCorrectionBolus(urlString, dateStart, dateEnd), urlString, dateStart, dateEnd, weight, Integer.parseInt(insulinPoolInput.getText()));
-                    // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
-                    // and the third has the basals that actually ran, which includes the profile basals and temp basals
-                    String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
-                    String[] columnNames = {"", "", "", ""}; // Let Swing know to show a table with 4 columns
-                    basalTable = new JTable(correctedBasals, columnNames);
-                    basalPanel.add(basalTable);
-                    frame.setVisible(true);
-                }
-
-            }
-        });
-
-        display.start();
-
 
 
     }

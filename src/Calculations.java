@@ -251,8 +251,9 @@ public class Calculations
         for(int i = 0; i < COB.length; i++)
         {
             if(count[i] > 0)
-                COB[i] += COB[i]/count[i];
+                COB[i] = COB[i]/count[i];
         }
+
         return COB;
     }
 
