@@ -1,6 +1,6 @@
 import java.time.*;
 
-// The CorrectionBolus object holds info for any insulin delivered that was not part of a basal or temp basal. It even holds the insulin delivered
+// The CorrectionBolus object holds data for any insulin delivered that was not part of a basal or temp basal. It even holds the insulin delivered
 // for meals. The 'insulin' is the amount of insulin delivered, and the 'timestamp' is the date and time at which the insulin began delivery.
 public class CorrectionBolus
 {
@@ -22,8 +22,8 @@ public class CorrectionBolus
         return timestamp;
     }
 
-    // The code below is used for when we want to create our own insulin boluses and modify them to see the effects.
-    // The code below is not part of the original CorrectionBolus data that we retrieve from Nightscout.
+    // The code below is used to create insulin boluses and modify them to model the effects.
+    // The code below is not part of the original CorrectionBolus data that is retrieved from Nightscout.
     private LocalTime time;
     public CorrectionBolus(double insulin, LocalTime time)
     {

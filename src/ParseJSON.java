@@ -11,7 +11,7 @@ public class ParseJSON
 {
     private static String profileString; // String which contains the entire Nightscout profile.
 
-    //Set the profileString to be the profile JSON from nightscout if we haven't already grabbed the profile.
+    //Set the profileString to be the profile JSON from Nightscout if the profile hasn't been downloaded this session.
     public static void setProfile(String url)
     {
         if(profileString == null)
@@ -187,9 +187,9 @@ public class ParseJSON
                 basalArray[j] = new Basal(value, time);
             }
 
-            // *Remember that dateStart and dateEnd are our start and end dates for grabbing profiles*
-            // What we want to do with these if statements is check to make sure that the profile we are currently checking falls within the dateStart
-            // and dateEnd range. We can't just check to see if the profile's start is in the range of dateStart and dateEnd, because the profile
+            // *Note: the dateStart and dateEnd are the start and end dates for retrieving profiles*
+            // The if statements below check to make sure that the profile currently being checked falls within the dateStart
+            // and dateEnd range. The program can't check to see if the profile's start is in the range of dateStart and dateEnd, because the profile
             // could start before our dateStart and dateEnd, and continue into or past the date range. Also, the start date of a profile is the date
             // that is held within the basalProfile object, however the end date of the basal profile is simply the start date of the next basal profile
 
@@ -225,7 +225,7 @@ public class ParseJSON
         return basalProfileList.toArray(new BasalProfile[basalProfileList.size()]); // Return the basalProfile list as an array
     }
 
-    // Grab the carbratioProfiles within the specified dates. The rest of the code below follows the same concept as the basalProfile.
+    // Retrieve the carbratioProfiles within the specified dates. The rest of the code below follows the same concept as the basalProfile.
     // Refer to the getBasalProfile method for further explanation.
     public static CarbRatioProfile[] getCarbratioProfile(ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {

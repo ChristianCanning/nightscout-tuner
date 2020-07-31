@@ -14,32 +14,32 @@ public class Calculations
         //Take only one basal profile for this period. Hence why this won't work on multiple days if the basal rates were changed. This also means that the code won't
         //account for the basal rate changing in the middle of the day. However, ideally the user will only specify date ranges in which they didn't change their basal profile.
 
-        //Move the basal profile to an arrayList so that we can add a dummy basal.
+        //Move the basal profile to an arrayList so that we can add a pseudo basal.
         ArrayList<Basal> profile =  new ArrayList<>();
         Collections.addAll(profile, basalProfiles[0].getProfile());
 
-        // This is the dummy basal we add.
-        // The dummy basal is simply used for the loop so that when we are on the true last basals(position profile.length-2),
+        // This is the pseudo basal we add.
+        // The pseudo basal is used for the loop so that when running the true last basals (position profile.length-2),
         // we can still compare it to the end of the day because the last basal runs throughout the rest of the day. The actual rate
-        // of this dummy basal is never accessed, however if it was, I have the value set to NaN so that the code would error out.
+        // of this pseudo basal is never accessed; however, as a precaution, the value is set to NaN so that the code errors out if accessed.
         profile.add(new Basal(NaN, LocalTime.of(23, 23, 59)));
 
         double basalInsulin = 0; // Variable to hold the sum of basalInsulin in a day
         //Loop through all the tempBasals.
         for(int i = 0; i < tempBasals.length-1; i++)
         {
-            // The expected difference is the duration that the temp basal tells us it should have lasted. Sometimes(but not usually), this value is inaccurate, or the duration finishes and it
-            // doesn't do another temp basal, but instead goes back to the basal profile. To account for this, we have to compare how long we think there
-            // is until the next temp basal starts, and how long there actually was.
+            // The expected difference is the duration that the temp basal should have lasted. Sometimes (but not usually), this value is inaccurate, or the duration finishes and it
+            // doesn't do another temp basal, but instead goes back to the basal profile. To account for this, we have to compare the initial duration length reported
+            // with how long the basal actually ran.
             double expectedDifference = tempBasals[i].getDuration() * 60;
-            //The actual difference is the diff between start of current temp basal and start of next temp basal in seconds
+            //The actual difference is the difference between start of current temp basal and start of next temp basal in seconds
             double actualDifference = Duration.between(tempBasals[i].getCreated_at().toLocalDateTime(), tempBasals[i+1].getCreated_at().toLocalDateTime()).getSeconds();
 
-            // If our durations between the start of the current temp basal and the start of the next temp basal doesn't match the duration within the
+            // If the durations between the start of the current temp basal and the start of the next temp basal doesn't match the duration within the
             // current temp basal.
             if(expectedDifference != actualDifference)
             {
-                //Loop through every basal in the basal profile, excluding the dummy basal
+                //Loop through every basal in the basal profile, excluding the pseudo basal
                 for(int j = 0; j < profile.size()-1; j++)
                 {
                     LocalTime basalStart = profile.get(j).getTime(); // Get the start time of the basal
@@ -47,7 +47,7 @@ public class Calculations
                     LocalTime tempStart = tempBasals[i].getCreated_at().toLocalTime(); // tempStart is the start of the current temp basal
 
                     // 'profileStart' is when the tempBasal finishes and starts doing the regular basal from the basal profile. If the stated duration in the current tempBasal
-                    // goes over the start of the next temp basal, then we are confident that the duration is incorrect, so only set
+                    // goes over the start of the next temp basal, then the duration is incorrect, so only set
                     // profileStart to be the start of the next temp basal, effectively not running the code beneath because the profileStart is equal to the profileEnd.
                     LocalTime profileStart = (tempBasals[i].getCreated_at().plusSeconds((long)(tempBasals[i].getDuration() * 60)).compareTo(tempBasals[i+1].getCreated_at()) > 0) ?
                             tempBasals[i+1].getCreated_at().toLocalTime() : tempStart.plusSeconds((long)(tempBasals[i].getDuration() * 60));
@@ -83,42 +83,43 @@ public class Calculations
             basalInsulin += (tempBasals[i].getCreated_at().plusSeconds((long)(tempBasals[i].getDuration() * 60)).compareTo(tempBasals[i+1].getCreated_at()) > 0) ?
                     tempBasals[i].getRate() * (actualDifference/3600.0) : tempBasals[i].getRate() * (tempBasals[i].getDuration() / 60.0);
         }
-        //This code assumes that after the last temp basal, the rest of the day was on a normal basal rate. This is *not a good way to do things*, but it will effect little overall.
-        return basalInsulin; // return total insulin taken in the day due to basals and temp basals
+        //This code assumes that after the last temp basal, the rest of the day was on a normal basal rate. While this is not ideal, testing showed this to have minimal effects on reporting and calculations.
+        return basalInsulin; // return total insulin taken in the day due to basals and temp basals.
     }
 
 
-    // Get the 'net' basals in a day. The net basals is what the basal rate was at, at any point in the day, taking into account temp basals and
+    // Get the net basals in a day. The net basals are what each basal rate was at, at any point in the day, taking into account temp basals and
     // the basal profile. Each entry in the ArrayList returned is in the format of a tempBasal, which has when the basal begins and how long it lasts.
     public static ArrayList<TempBasal> getNetBasals(TempBasal[] tempBasals, BasalProfile[] basalProfiles)
     {
         ArrayList<TempBasal> netBasals = new ArrayList<>(); // Create ArrayList to hold all the basals.
 
         //Take only one basal profile for this period. Hence why this won't work on multiple days if the basal rates were changed. This also means that the code won't
-        //account for the basal rate changing in the middle of the day. However, ideally the user will only specify date ranges in which they didn't change their basal profile.
+        //account for the basal rate changing in the middle of the day. Until this is addressed, to get the maximum benefit from this code, ideally users will need to make basal
+        //profile changes late in the day to minimize calculation errors.
         ArrayList<Basal> profile =  new ArrayList<>();
         Collections.addAll(profile, basalProfiles[0].getProfile());
 
-        // This is the dummy basal we add.
-        // The dummy basal is simply used for the loop so that when we are on the true last basals(position profile.length-2),
+        // This is the pseudo basal we add.
+        // The pseudo basal is used for the loop so that when at the true last basals (position profile.length-2),
         // we can still compare it to the end of the day because the last basal runs throughout the rest of the day. The actual rate
-        // of this dummy basal is never accessed, however if it was, I have the value set to NaN so that the code would error out.
+        // of this pseudo basal is never accessed; however, as a precaution, the value is set to NaN so that the code errors out if accessed.
         profile.add(new Basal(NaN, LocalTime.of(23, 23, 59)));
 
         for(int i = 0; i < tempBasals.length-1; i++)
         {
-            // The expected difference is the duration that the temp basal tells us it should have lasted. Sometimes(but not usually), this value is inaccurate, or the duration finishes and it
-            // doesn't do another temp basal, but instead goes back to the basal profile. To account for this, we have to compare how long we think there
+            // The expected difference is the duration that the temp basal is reported to have lasted. Sometimes (but not usually), this value is inaccurate, or the duration finishes and it
+            // doesn't do another temp basal, but instead goes back to the basal profile. To account for this, we have to compare how long it was reported there
             // is until the next temp basal starts, and how long there actually was.
             double expectedDifference = tempBasals[i].getDuration() * 60;
             //The actual difference is the difference between start of current temp basal and start of next temp basal in seconds
             double actualDifference = Duration.between(tempBasals[i].getCreated_at().toLocalDateTime(), tempBasals[i+1].getCreated_at().toLocalDateTime()).getSeconds();
 
-            // If our durations between the start of the current temp basal and the start of the next temp basal doesn't match the duration within the
+            // If the durations between the start of the current temp basal and the start of the next temp basal doesn't match the duration within the
             // current temp basal.
             if(expectedDifference != actualDifference)
             {
-                //Loop through every basal in the basal profile, excluding the dummy basal
+                //Loop through every basal in the basal profile, excluding the pseudo basal
                 for(int j = 0; j < profile.size()-1; j++)
                 {
                     LocalTime basalStart = profile.get(j).getTime(); // Start of our current basal in the basal profile
@@ -126,7 +127,7 @@ public class Calculations
                     LocalTime tempStart = tempBasals[i].getCreated_at().toLocalTime();
                     // tempStart is the start of the current temp basal
                     // 'profileStart' is when the tempBasal finishes and starts doing the regular basal from the basal profile. If the stated duration in the current tempBasal
-                    // goes over the start of the next temp basal, then we are confident that the duration is incorrect, so only set
+                    // goes over the start of the next temp basal, then the duration reported is incorrect, so only set
                     // profileStart to be the start of the next temp basal, effectively not running the code beneath because the profileStart is equal to the profileEnd.
                     LocalTime profileStart = (tempBasals[i].getCreated_at().plusSeconds((long)(tempBasals[i].getDuration() * 60)).compareTo(tempBasals[i+1].getCreated_at()) > 0) ?
                             tempBasals[i+1].getCreated_at().toLocalTime() : tempStart.plusSeconds((long)(tempBasals[i].getDuration() * 60));
@@ -167,13 +168,13 @@ public class Calculations
             else
                 netBasals.add(new TempBasal(tempBasals[i].getRate(), tempBasals[i].getDuration(), tempBasals[i].getCreated_at()));
         }
-        //This code assumes that after the last temp basal, the rest of the day was on a normal basal rate. This is *not a good way to do things*, but it will effect little overall.
+        //This code assumes that after the last temp basal, the rest of the day was on a normal basal rate. This is not ideal, but testing shows little effect overall to calculations.
 
         Collections.sort(netBasals); // Make sure the netBasals are sorted based on their times, since they could be out of order
         return netBasals; // Return arraylist consisting of entries that show when a basal starts, and how long it lasts
     }
 
-    // Gets the average basal over every period specified. The period is in minutes. So using a period of 30 would return an array consisting of the
+    // Calculates the average basal over every period specified. The period is in minutes. So using a period of 30 would return an array consisting of the
     // average basal every 30 minutes.
     public static double[] getBasalAverage(ArrayList<TempBasal> netBasals, int period)
     {
@@ -184,10 +185,10 @@ public class Calculations
             // For every position in basalAverage, loop through the netBasals
             for (TempBasal netBasal : netBasals)
             {
-                // basalAverageStart is the start time of the current basalAverage position we are on.
+                // basalAverageStart is the start time of the current basalAverage position currently being processed.
                 LocalTime basalAverageStart = LocalTime.of(0, 0).plusMinutes(i * period);
-                // basalAverageEnd is the end time of the current basalAverage position we are on (or the start time of the next basal average).
-                // The basalAverageEnd is nonInclusive, so that on our final loop, we don't go past 23 hours, 59 mins, and 59 seconds. If we went to
+                // basalAverageEnd is the end time of the current basalAverage position currently being processed (or the start time of the next basal average).
+                // The basalAverageEnd is nonInclusive, so that on the final loop, it does not go past 23 hours, 59 mins, and 59 seconds. If it went to
                 // 24 hours, then it would loop back around to 0 hours, 0 mins, and 0 seconds.
                 LocalTime basalAverageEnd = basalAverageStart.plusSeconds(period * 60 - 1);
                 LocalTime netStart = netBasal.getCreated_at().toLocalTime(); // The start time of the current netBasal
@@ -257,8 +258,11 @@ public class Calculations
     }
 
 
-    // The getSmallYData, getMediumYData, and getLargeYData below just return the insulin GIR curves for .1u/kg, .2u/kg, and .4u/kg respectively. I originally took
-    // the raw data for these 3 curves and plotted them in excel. I then found a polynomial equation for each curve that covered more than 99 % of the original
+    // The getSmallYData, getMediumYData, and getLargeYData below return the insulin GIR (Glucose Infusion Rate) curves for .1u/kg, .2u/kg, and .4u/kg (units of insulin per kilogram of body weight) respectively.
+    // Literature published on insulin aspart (Fiasp) and insulin lispro (Humalog) show little difference to the overall calculations required for this programs main objective--auto-calculating basals.
+    // Additionally, I compared the difference between the published duration of insulin activity curves and the GIR curves. I chose the GIR curves for insulin aspart because those values will produce
+    // similar values to other fast acting insulins. I used the raw data for the published .1u/kg, .2u/kg, and .4u/kg curves and plotted them in excel.
+    // I then found a polynomial equation for each curve that covered more than 99 % of the original
     // data points, with the intention of smoothing out any irregularities in the original data set that could affect stuff later. The equations
     // listed in each of these methods are the equations that almost perfectly cover each data set. Each method returns the data with the x axis updating in 15 second intervals.
     public static double[] getSmallYData(double[] smallXData)
@@ -336,18 +340,19 @@ public class Calculations
         return comparison;
     }
 
-    // Return the average Duration of Insulin activity for each 5 minute period in the day.
+    // Return the average Duration of Insulin Activity for each 5 minute period in the day. DIA is equal to the length of the GIR curve.
     public static double[] getDIA(CorrectionBolus[] correctionBoluses, String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, double weight, int insulinPool)
     {
         double[] basalAverage = Chart.averageBasals(url, dateStart, dateEnd, 5, false); // Average basals every 5 minutes
-        // Create array that keeps track of insulin for every 5 minute position. There would be 288 positions for every 5 minute position in the day,
-        // however there are 576 to make the code easier to account for wrapping around to the next day later on. We are using modifyInsulin objects
-        // so that we can have multiple positions in the array reference the same insulin amount. Positions 0-143 represent the second half of the day,
+        // Create array that keeps track of insulin for every 5 minute position. There are 288 5-minute positions in a 24 hour period,
+        // however, this program uses 576 positions to make the code easier to account for wrapping around to the next day later on. This program uses modifyInsulin objects
+        // so that it can have multiple positions in the array reference the same insulin amount. When calculating the effects of insulin on BG, the program has to account for
+        // the effect of insulin administered at the end of the day because it will have an impact on BG values well into the next day. With this in mind, positions 0-143 represent the second half of the day,
         // from 12:00 to 23:55. Positions 144-432 represent the entire day of 00:00 to 23:55. Positions 433-575 represent the first half of the day,
-        // from 00:00 to 11:55. This is only so that it is easier to effect insulin durations that go on to the next day. For example, if I gave
-        // 10 units of insulin at 23:00, not all of it would be absorbed by 00:00, so we have to account for the rest of it by wrapping around to the beginning
-        // of the next day. Just to be clear, there are only 288 modifyInsulin objects, so every position that references a specific time is also referenced somewhere else.
-        // If I modify the insulin at 00:00, both positions 144 and 289 are affected.
+        // from 00:00 to 11:55. Again, the use of positions 0-143 and 433-575 are used to accurately model the effect insulin delivered late in the day has on the next day. For example, if I gave
+        // 10 units of insulin at 23:00, not all of it would be absorbed by 00:00, so the program needs to account for the effect of the remaining insulin by wrapping around to the beginning
+        // of the next day. Just to be clear, there are only 288 modifyInsulin objects, so every position that references a specific time is also referenced somewhere else--meaning that
+        // if the program modifies the insulin at position 144 (00:00), position 289 still equal position 144 (with both holding the new value).
         CorrectionBolus[] insulinDeliveredArr = new CorrectionBolus[576];
 
         //Add the basal insulin for each 5 minute period to insulinDeliveredArr.
@@ -370,11 +375,12 @@ public class Calculations
             insulinDeliveredArr[pos + 144].setInsulin(insulinDeliveredArr[pos + 144].getInsulin() + correctionBolus.getInsulin());
         }
 
-        // Get the Duration of Insulin Activity for each 5 minute period. We mainly want to use DIA so that if a blood glucose point is lowered
+        // Get the Duration of Insulin Activity for each 5 minute period. DIA is used so that when this program models lowering blood glucose value
         // by an amount, we know how many positions after that to subsequently also lower the same amount. This method gets the insulin from the previous positions
-        // based on what the insulinPool is set to. If the insulinPool is set to 30 minutes, the duration of insulin activity for any 5 minute period
-        // sums up the insulin of the 5 previous 5 minute periods and the current 5 minute period, and uses the total insulin to generate an insulin curve.
-        // The length of the insulin curve would be the duration of insulin activity for the current 5 minute position.
+        // based on what the insulinPool is set to. InsulinPool is used to model the pooling of insulin delivery and
+        // its effect on insulin absorption in the body. If the insulinPool is set to 30 minutes, the duration of insulin activity for a seleccted 5 minute period
+        // is based on the the total insulin delivered over the previous 30 minutes to generate an insulin curve.
+        // The length of the insulin curve is the calculated duration of insulin activity for the specified 5 minute position.
         double[] DIA = new double[576];
         for(int i = 144; i < 432; i++)
         {
