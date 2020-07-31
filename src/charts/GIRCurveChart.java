@@ -14,7 +14,6 @@ public class GIRCurveChart
         double max = 0;
         for(double i : yData)
         {
-            //System.out.println(i);
             if (i > max)
             {
                 max = i;
@@ -22,7 +21,6 @@ public class GIRCurveChart
         }
         chart.getStyler().setYAxisMax(max);
         chart.getStyler().setYAxisMin(0.0);
-        //chart.getStyler().setDefaultSeriesRenderStyle(XYSeries.XYSeriesRenderStyle.Step);
 
         JPanel chartPanel = new XChartPanel<XYChart>(chart);
 

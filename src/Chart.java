@@ -570,18 +570,14 @@ public class Chart
             extraInsulinCorrected[i+1][3] = df.format(extraInsulin[i] * (actualInsulin/totalInsulin) * (60.0/period) + basalAverages[i]);
         }
 
-        double[] test = new double[288];
+        double[] adjustedBGsDouble = new double[288];
         for(int i = 144; i < 432; i++)
         {
-            test[i-144] = adjustedBGs[i].getBG();
+            adjustedBGsDouble[i-144] = adjustedBGs[i].getBG();
         }
-        XYChart chart = new XYChartBuilder().width(800).height(600).title("Charts").xAxisTitle("Nominal time (h)").yAxisTitle("GIR(mg/(kg*min))").build();
-        chart.getStyler().setYAxisMax(250.0);
-        chart.getStyler().setYAxisMin(50.0);
-        chart.addSeries("original", xData, averagedBGs);
-        chart.addSeries("new", xData, test);
-        new SwingWrapper(chart).displayChart();
 
+        Thread chart = new Thread(() -> new BGChart(xData, averagedBGs, adjustedBGsDouble, dateStart, dateEnd));
+        chart.start();
         return extraInsulinCorrected;
 
     }
