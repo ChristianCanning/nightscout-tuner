@@ -1,6 +1,6 @@
 import java.time.*;
 
-// The insulin-to-carb ratio object which holds the time of day at which it is active, known as 'time', and the insulin-to-carb ratio value,
+// The insulin-to-carb ratio object holds the time of day at which it is active, known as 'time', and the insulin-to-carb ratio value,
 // known as 'value'.
 public class CarbRatio
 {

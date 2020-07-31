@@ -21,8 +21,8 @@ public class BG
         return date;
     }
 
-    // The code below is used for when we want to create our own BGs and modify them to do things such as adjusting BGs.
-    // The code below is not part of the original BG data that we retrieve from Nightscout.
+    // The code below is used to create BG values and modify them to do things such as adjusting BGs.
+    // The code below is not part of the original BG data that is retrieved from Nightscout.
     private LocalTime time;
 
     public BG(double bg, LocalTime time)
