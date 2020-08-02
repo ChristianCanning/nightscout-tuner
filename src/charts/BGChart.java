@@ -75,6 +75,13 @@ public class BGChart
             if(i < min)
                 min = i;
         }
+        for(double i : yDataAdjusted)
+        {
+            if(i > max)
+                max = i;
+            if(i < min)
+                min = i;
+        }
         chart.getStyler().setYAxisMax(max);
         chart.getStyler().setYAxisMin(min);
 
