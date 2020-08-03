@@ -1,6 +1,6 @@
 import javax.swing.*;
 
-// This is where the program starts.
+//This is where the program starts.
 public class Main
 {
     private static GUI mainGUI; // Define the gui object so that we can reference it later to change elements

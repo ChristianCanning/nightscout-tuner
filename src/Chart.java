@@ -24,20 +24,22 @@ public class Chart
         int[] countBGs = new int[288];
         int day = 0;
         int count = 0;
-        for(int i = 1; i < bgs.length; i++)
+        for(int i = 0; i < bgs.length; i++)
         {
-            if(bgs[i].getDate().toLocalDate().compareTo(bgs[i-1].getDate().toLocalDate()) > 0)
+            if(i != 0 && bgs[i].getDate().toLocalDate().compareTo(bgs[i-1].getDate().toLocalDate()) > 0)
             {
                 day++;
                 count = 0;
             }
             // gap is the difference between the previous bg and the current one. If the gap is greater than 5 minutes, then we know there's a gap in readings
-            int gap = (int)Duration.between(bgs[i-1].getDate().toLocalDateTime(), bgs[i].getDate().toLocalDateTime()).toMinutes();
+            int gap = (count == 0) ? 0 : (int)Duration.between(bgs[i-1].getDate().toLocalDateTime(), bgs[i].getDate().toLocalDateTime()).toMinutes();
             if(gap > 5)
             {
+
                 count += gap/5 -1;
-                bgMatrix[day][count] = new BG(0, bgs[i].getDate());
+                bgMatrix[day][count] = bgs[i];
                 countBGs[count] += 1;
+                count++;
             }
             else
             {
@@ -47,6 +49,7 @@ public class Chart
             }
 
         }
+
 
         double[] summedBGs = new double[288]; // Array to sum up all the columns in the bgMatrix
         for (BG[] matrix : bgMatrix) {
