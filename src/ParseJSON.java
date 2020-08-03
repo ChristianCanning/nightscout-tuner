@@ -35,7 +35,7 @@ public class ParseJSON
         String bgString = "";
         System.out.print("Grabbing BGs JSON from Nightscout... ");
         try {
-            URL json = new URL(urlString + "api/v1/entries/sgv.json?find[dateString][$gte]=" + dateStart.minusDays(2).toLocalDate().toString() + "&find[dateString][$lte]=" + dateEnd.plusDays(1).toLocalDate().toString() + "&count=1000000");
+            URL json = new URL(urlString + "api/v1/entries/sgv.json?find[dateString][$gte]=" + dateStart.minusDays(2).toLocalDate().toString() + "&find[dateString][$lte]=" + dateEnd.plusDays(1).toLocalDate().toString() + "&count=10000000");
             BufferedReader br = new BufferedReader(new InputStreamReader(json.openStream()));
             bgString = br.readLine();
             System.out.println("Success(" + bgString.getBytes("UTF-8").length/1024.0 + " KB)");
@@ -43,7 +43,11 @@ public class ParseJSON
             e.printStackTrace();
         }
 
+
+
         JSONArray bgJSON = new JSONArray(bgString); // Turn bgString into a JSON array
+        String tempString = bgJSON.getJSONObject(0).getString("dateString");
+        ZonedDateTime previousDate = LocalDateTime.parse(tempString.substring(0, tempString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault()).minusMinutes(10);
         ArrayList<BG> bgList = new ArrayList<BG>(); // Create an ArrayList to hold all the BGs that we are going to parse
         // For each loop which grabs every 'sgv' (bg) entry and adds them to the bgList
         for(Object i : bgJSON)
@@ -52,8 +56,16 @@ public class ParseJSON
             String dateString = entry.getString("dateString");
             ZonedDateTime date = LocalDateTime.parse(dateString.substring(0, dateString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault());
             int bgValue = entry.getInt("sgv");
-            if((date.compareTo(dateStart)) >= 0 && date.compareTo(dateEnd) <=0)
+
+            double comparison = Duration.between(date, previousDate).getSeconds() / 60.0;
+            if((date.compareTo(dateStart)) >= 0 && date.compareTo(dateEnd) <=0 && comparison >  4)
+            {
                 bgList.add(0, new BG(bgValue, date));
+                previousDate = date;
+            }
+
+
+
         }
         return bgList.toArray(new BG[bgList.size()]); // Return bgList as an array
     }
