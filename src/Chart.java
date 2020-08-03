@@ -355,10 +355,17 @@ public class Chart
         double[] extraInsulin = new double[1440/period];
 
 
-        double totalRaise = 0;
-        double previousTotalRaise = -4;
-        while(totalRaise - previousTotalRaise > .1)
+        double[] insulinDelivered = new double[basalAverages.length];
+        for(int b = 0; b < insulinDelivered.length; b++)
         {
+            insulinDelivered[b] = basalAverages[b]/(60.0/period);
+        }
+        double totalRaise = 0;
+        double previousTotalRaise = -1;
+        double count = 0;
+        while(totalRaise - previousTotalRaise > 0)
+        {
+            count++;
             System.out.println(totalInsulin + " units applied");
             previousTotalRaise = totalRaise;
             for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
@@ -367,16 +374,11 @@ public class Chart
                 boolean canRun = false;
                 while(!canRun)
                 {
-                    canRun = true;
                     double raise = insulin * isf;
                     double[] curveY = GIRCurve(insulin/weight, false);
                     for(int j = i; j < i + period/5; j++)
                     {
                         double length = DIA[j];
-                        for(int a = j - 1; length <= 0; a--)
-                        {
-                            length = DIA[a];
-                        }
                         for(int k = j; k < length + j; k++)
                         {
                             double currentTime = (k -j) * 5.0 / 60;
@@ -387,13 +389,12 @@ public class Chart
                             }
                             for(int l = k; l < length + j; l++)
                             {
-                                double currentInsulin = basalAverages[(i-144)/(period/5)] / 12.0;
-                                if(currentInsulin - insulin <= 0 || tempBGs[k].getBG() > 100)
-                                {
-                                    canRun = false;
-                                }
-                                if(tempBGs[k].getBG() < min && insulin < ((currentInsulin < .01) ? 1 : currentInsulin))
+                                double currentInsulin = insulinDelivered[(i-144)/(period/5)];
+                                if(tempBGs[k].getBG() < min)
                                     canRun = true;
+                                if(currentInsulin - insulin * 6 <= 0)
+                                    canRun = false;
+
                             }
                         }
                     }
@@ -412,9 +413,10 @@ public class Chart
                         insulin -= .01;
                     }
                 }
-                insulin *= .005;
+                    insulin *= .005;
                 if(insulin > 0)
                 {
+                    insulinDelivered[(i-144)/(period/5)] -= insulin * 6;
                     for(int j = i; j < i + period/5; j++)
                     {
                         double raise = insulin * isf;
@@ -443,9 +445,11 @@ public class Chart
         }
 
         double totalDrop = 0;
-        double previousTotalDrop = -2;
-        while(totalDrop - previousTotalDrop > .1)
+        double previousTotalDrop = -4;
+
+        while(totalDrop - previousTotalDrop > 0)
         {
+            count++;
             System.out.println(totalInsulin + " units applied(add insulin)");
             previousTotalDrop = totalDrop;
             for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
