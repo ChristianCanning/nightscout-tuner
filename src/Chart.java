@@ -347,12 +347,110 @@ public class Chart
 
 
         double totalInsulin = 0;
-        double totalDrop = 0;
-        double previousTotalDrop = -2;
+
+
+
+
+
         double[] extraInsulin = new double[1440/period];
-        while(totalDrop - previousTotalDrop > 1)
+
+
+        double[] insulinDelivered = new double[basalAverages.length];
+        for(int b = 0; b < insulinDelivered.length; b++)
         {
+            insulinDelivered[b] = basalAverages[b]/(60.0/period);
+        }
+        double totalRaise = 0;
+        double previousTotalRaise = -1;
+        double count = 0;
+        while(totalRaise - previousTotalRaise > 0)
+        {
+            count++;
             System.out.println(totalInsulin + " units applied");
+            previousTotalRaise = totalRaise;
+            for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
+            {
+                double insulin = .01;
+                boolean canRun = false;
+                while(!canRun)
+                {
+                    double raise = insulin * isf;
+                    double[] curveY = GIRCurve(insulin/weight, false);
+                    for(int j = i; j < i + period/5; j++)
+                    {
+                        double length = DIA[j];
+                        for(int k = j; k < length + j; k++)
+                        {
+                            double currentTime = (k -j) * 5.0 / 60;
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
+                            for(int l = k; l < length + j; l++)
+                            {
+                                tempBGs[l].setBg(tempBGs[l].getBG() + (raise * percentage));
+                            }
+                            for(int l = k; l < length + j; l++)
+                            {
+                                double currentInsulin = insulinDelivered[(i-144)/(period/5)];
+                                if(tempBGs[k].getBG() < min)
+                                    canRun = true;
+                                if(currentInsulin - insulin * 6 <= 0)
+                                    canRun = false;
+
+                            }
+                        }
+                    }
+                    if(canRun)
+                    {
+                        canRun = false;
+                        insulin += .01;
+                        for(int a = 0; a < adjustedBGs.length; a++)
+                        {
+                            tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
+                        }
+                    }
+                    else
+                    {
+                        canRun = true;
+                        insulin -= .01;
+                    }
+                }
+                    insulin *= .005;
+                if(insulin > 0)
+                {
+                    insulinDelivered[(i-144)/(period/5)] -= insulin * 6;
+                    for(int j = i; j < i + period/5; j++)
+                    {
+                        double raise = insulin * isf;
+                        totalInsulin -= insulin;
+                        double[] curveY = GIRCurve(insulin/weight, false);
+                        double length = DIA[j];
+                        for(int k = j; k < length + j; k++)
+                        {
+                            double currentTime = (k -j) * 5.0 / 60;
+                            double percentage = getGIRCurvePercentage(curveY, currentTime);
+                            totalRaise += raise * percentage;
+                            extraInsulin[(i-144)/(period/5)] -= insulin * percentage;
+                            for(int l = k; l < length + j; l++)
+                            {
+                                adjustedBGs[l].setBg(adjustedBGs[l].getBG() + (raise * percentage));
+                            }
+                        }
+                    }
+                }
+
+                for(int a = 0; a < adjustedBGs.length; a++)
+                {
+                    tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
+                }
+            }
+        }
+
+        double totalDrop = 0;
+        double previousTotalDrop = -4;
+
+        while(totalDrop - previousTotalDrop > 0)
+        {
+            count++;
+            System.out.println(totalInsulin + " units applied(add insulin)");
             previousTotalDrop = totalDrop;
             for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
             {
@@ -426,91 +524,7 @@ public class Chart
             }
         }
 
-        double totalRaise = 0;
-        double previousTotalRaise = -4;
-        while(totalRaise - previousTotalRaise > 1)
-        {
-            System.out.println(totalInsulin + " units applied");
-            previousTotalRaise = totalRaise;
-            for(int i = 144; i < adjustedBGs.length-144; i+=period/5)
-            {
-                double insulin = .01;
-                boolean canRun = false;
-                while(!canRun)
-                {
-                    canRun = true;
-                    double raise = insulin * isf;
-                    double[] curveY = GIRCurve(insulin/weight, false);
-                    for(int j = i; j < i + period/5; j++)
-                    {
-                        double length = DIA[j];
-                        for(int a = j - 1; length <= 0; a--)
-                        {
-                            length = DIA[a];
-                        }
-                        for(int k = j; k < length + j; k++)
-                        {
-                            double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getGIRCurvePercentage(curveY, currentTime);
-                            for(int l = k; l < length + j; l++)
-                            {
-                                tempBGs[l].setBg(tempBGs[l].getBG() + (raise * percentage));
-                            }
-                            for(int l = k; l < length + j; l++)
-                            {
-                                double currentInsulin = basalAverages[(i-144)/(period/5)] * (60.0/period);
-                                if (tempBGs[l].getBG() > min || currentInsulin - (insulin * (period / 5.0)) * (60.0 / period) < currentInsulin / 2.0)
-                                {
-                                    canRun = false;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if(canRun)
-                    {
-                        canRun = false;
-                        insulin += .01;
-                        for(int a = 0; a < adjustedBGs.length; a++)
-                        {
-                            tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
-                        }
-                    }
-                    else
-                    {
-                        canRun = true;
-                        insulin -= .01;
-                    }
-                }
-                insulin *= .1;
-                if(insulin > 0)
-                {
-                    for(int j = i; j < i + period/5; j++)
-                    {
-                        double raise = insulin * isf;
-                        totalInsulin -= insulin;
-                        double[] curveY = GIRCurve(insulin/weight, false);
-                        double length = DIA[j];
-                        for(int k = j; k < length + j; k++)
-                        {
-                            double currentTime = (k -j) * 5.0 / 60;
-                            double percentage = getGIRCurvePercentage(curveY, currentTime);
-                            totalRaise += raise * percentage;
-                            extraInsulin[(i-144)/(period/5)] -= insulin * percentage;
-                            for(int l = k; l < length + j; l++)
-                            {
-                                adjustedBGs[l].setBg(adjustedBGs[l].getBG() + (raise * percentage));
-                            }
-                        }
-                    }
-                }
 
-                for(int a = 0; a < adjustedBGs.length; a++)
-                {
-                    tempBGs[a] = new BG(adjustedBGs[a].getBG(), adjustedBGs[a].getTime());
-                }
-            }
-        }
 
         double averagedSum = 0;
         double countAverageBGs = 0;

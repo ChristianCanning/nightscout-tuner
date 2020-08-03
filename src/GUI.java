@@ -196,6 +196,7 @@ public class GUI implements ActionListener
                 // Get the Duration of Insulin Activity for every 5 minute period in the day.
                 // Each 5 minute period takes into account the previous minutes based on what the insulinPoolInput is.
                 double[] DIA = Calculations.getDIA(ParseJSON.getCorrectionBolus(urlString, dateStart, dateEnd), urlString, dateStart, dateEnd, weight, Integer.parseInt(insulinPoolInput.getText()));
+
                 // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
                 // and the third has the basals that actually ran, which includes the profile basals and temp basals
                 String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);

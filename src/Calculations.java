@@ -399,9 +399,4 @@ public class Calculations
         System.arraycopy(DIA, 144, DIA, 432, 144);
         return DIA;
     }
-
-
-
-
-
 }
