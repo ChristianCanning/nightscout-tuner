@@ -3,6 +3,7 @@ import org.knowm.xchart.XYChart;
 import org.knowm.xchart.XYSeries;
 import org.knowm.xchart.style.Styler;
 
+import java.text.DecimalFormat;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 public class BGChart
 {
+    DecimalFormat df = new DecimalFormat("#.##");
 
     public BGChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
@@ -27,19 +29,28 @@ public class BGChart
         chart.setTitle("BGs Chart " + dateStart.toLocalDate() + " to " + dateEnd.toLocalDate().minusDays(1));
         chart.setXAxisTitle("Time(hours)");
         chart.setYAxisTitle("Blood Glucose");
-        XYSeries series = chart.addSeries("BGs", xData, yData);
+
         chart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNW);
         chart.setCustomXAxisTickLabelsMap(customXAxisTickLabelsMap);
 
         double max = 300;
         double min = 40;
+        double sum = 0;
+        double count = 0;
         for(double i : yData)
         {
+            if(!Double.isNaN(i))
+                sum += i;
+            if(i > 0)
+                count++;
             if(i > max)
                 max = i;
             if(i < min)
                 min = i;
         }
+
+
+        XYSeries series = chart.addSeries("BGs(AVG BG: " + df.format(sum/count) + ")", xData, yData);
         chart.getStyler().setYAxisMax(max);
         chart.getStyler().setYAxisMin(min);
 
@@ -61,27 +72,44 @@ public class BGChart
         chart.setTitle("Adjusted BGs Chart " + dateStart.toLocalDate() + " to " + dateEnd.toLocalDate().minusDays(1));
         chart.setXAxisTitle("Time(hours)");
         chart.setYAxisTitle("Blood Glucose");
-        XYSeries series = chart.addSeries("Before", xData, yData);
-        XYSeries series2 = chart.addSeries("After", xData, yDataAdjusted);
+
         chart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNW);
         chart.setCustomXAxisTickLabelsMap(customXAxisTickLabelsMap);
 
         double max = 300;
         double min = 40;
+
+        double sum = 0;
+        double count = 0;
         for(double i : yData)
         {
+            if(!Double.isNaN(i))
+                sum += i;
+            if(i > 0)
+                count++;
             if(i > max)
                 max = i;
             if(i < min)
                 min = i;
         }
+
+        double countAfter = 0;
+        double sumAfter = 0;
         for(double i : yDataAdjusted)
         {
+            if(!Double.isNaN(i))
+                sumAfter += i;
+            if(i > 0)
+                countAfter++;
             if(i > max)
                 max = i;
             if(i < min)
                 min = i;
         }
+
+
+        XYSeries series = chart.addSeries("Before(AVG BG: " + df.format(sum/count) + ")", xData, yData);
+        XYSeries series2 = chart.addSeries("After(AVG BG: " + df.format(sumAfter/countAfter) + ")", xData, yDataAdjusted);
         chart.getStyler().setYAxisMax(max);
         chart.getStyler().setYAxisMin(min);
 

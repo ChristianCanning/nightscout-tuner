@@ -238,7 +238,7 @@ public class Calculations
             // If we had reached the end of the day before carbs were fully absorbed, loop back around to the start of the day
             if(pos >= 1440 && currentDay.plusDays(1).compareTo(dateEnd) < 0)
             {
-                pos = 0;
+                pos = pos - 1440;
                 while(amount > 0 && pos < 1440)
                 {
                     COB[pos] += amount;
@@ -398,5 +398,52 @@ public class Calculations
         // Set positions 432-575 equal to positions 144-287
         System.arraycopy(DIA, 144, DIA, 432, 144);
         return DIA;
+    }
+
+    public static double[][] adjustICR(MealBolus[] mealBoluses, double absorptionRate, ZonedDateTime dateStart, ZonedDateTime dateEnd)
+    {
+        int days = (int)Duration.between(dateStart, dateEnd).toDays();
+        //absorptionRate = carbs absorbed per hour
+        double minuteRate = absorptionRate / 60.0; // carbs absorbed per minute
+        double[][] COB = new double[days][1440]; // COB matrix to hold the cob for every minute in each day
+        double[] avgDailyCarb = new double[days];
+        int day = 0;
+        int count = 0;
+        LocalDate currentDay = dateStart.toLocalDate();
+        for(MealBolus i : mealBoluses)
+        {
+            if(i.getTimestamp().toLocalDate().compareTo(currentDay) > 0)
+            {
+                avgDailyCarb[day] /= count;
+                count = 0;
+                day++;
+                currentDay = i.getTimestamp().toLocalDate();
+            }
+            avgDailyCarb[day] += i.getCarbs();
+            count++;
+            int minutes = i.getTimestamp().getHour() * 60 + i.getTimestamp().getMinute(); // Get the minute that the carbs were taken
+            int pos = minutes + 10; // Assume that carbs start entering the blood stream around 10 minutes later
+            double amount = i.getCarbs(); // Amount of carbs taken
+
+            //Decrease carbs on board over time using the minuteRate until we hit 0 or reach the end of the day
+            while(amount > 0 && pos < 1440)
+            {
+                COB[day][pos] += amount;
+                pos++;
+                amount -= minuteRate;
+            }
+            // If we had reached the end of the day before carbs were fully absorbed, loop back around to the start of the day
+            if(pos >= 1440 && dateStart.plusDays(1).compareTo(dateEnd) < 0 && day+1 <= days)
+            {
+                pos = pos - 1440;
+                while(amount > 0 && pos < 1440)
+                {
+                    COB[day+1][pos] += amount;
+                    pos++;
+                    amount -= minuteRate;
+                }
+            }
+        }
+        return COB;
     }
 }
