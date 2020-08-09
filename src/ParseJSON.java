@@ -155,10 +155,10 @@ public class ParseJSON
         for(Object i : mealBolusJSON)
         {
             JSONObject entry = (JSONObject)i;
-            String created_atString = entry.getString("timestamp");
-            ZonedDateTime timestamp = LocalDateTime.parse(created_atString.substring(0, created_atString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault());
+            String timestampString = (entry.has("timestamp")) ? entry.getString("timestamp") : entry.getString("created_at");
+            ZonedDateTime timestamp = LocalDateTime.parse(timestampString.substring(0, timestampString.length()-1)).atZone(ZoneId.of("GMT")).withZoneSameInstant(ZoneId.systemDefault());
             int carbs = entry.getInt("carbs");
-            int absorptionTime = entry.getInt("absorptionTime");
+            int absorptionTime = (entry.has("absorptionTime")) ? entry.getInt("absorptionTime") : 180;
             if((timestamp.compareTo(dateStart)) >= 0 && timestamp.compareTo(dateEnd) <=0)
                 mealBolusList.add(0, new MealBolus(carbs, absorptionTime, timestamp));
 
