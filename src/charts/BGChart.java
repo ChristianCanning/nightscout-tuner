@@ -15,6 +15,7 @@ public class BGChart
 
     public BGChart(double[] xData, double[] yData, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
+
         Map<Object, Object> customXAxisTickLabelsMap = new HashMap<>();
         for(int i = 0; i < xData.length; i++)
         {
@@ -58,6 +59,21 @@ public class BGChart
     }
     public BGChart(double[] xData, double[] yData, double[] yDataAdjusted, ZonedDateTime dateStart, ZonedDateTime dateEnd)
     {
+        System.out.println("Start Stream Before");
+        for(double f : yData)
+        {
+            System.out.println(f);
+        }
+        System.out.println("End Stream Before");
+
+        System.out.println("Start Stream Adjusted");
+        for(double o : yDataAdjusted)
+        {
+            System.out.println(o);
+        }
+        System.out.println("End Stream Adjusted");
+
+
         Map<Object, Object> customXAxisTickLabelsMap = new HashMap<>();
         for(int i = 0; i < xData.length; i++)
         {

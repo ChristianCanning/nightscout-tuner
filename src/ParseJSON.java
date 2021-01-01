@@ -18,7 +18,7 @@ public class ParseJSON
         {
             System.out.print("Grabbing profile JSON from Nightscout... ");
             try {
-                URL json = new URL(url + "api/v1/profile.json");
+                URL json = new URL(url + "api/v1/profile.json?count=10000000");
                 BufferedReader br = new BufferedReader(new InputStreamReader(json.openStream()));
                 profileString = br.readLine();
                 System.out.println("Success(" + profileString.getBytes("UTF-8").length/1024.0 + " KB)");

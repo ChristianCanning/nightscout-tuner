@@ -602,6 +602,191 @@ public class Chart
 
     }
 
+    public static String[][] manualAdjustAverageBGs(String url, ZonedDateTime dateStart, ZonedDateTime dateEnd, int min, double isf, int period, double weight, double[] DIA, double[] basalAverages)
+    {
+        DecimalFormat df = new DecimalFormat("#.##");
+
+
+        double averageDIA = 0;
+        for(int i = 144; i < 432; i++)
+        {
+            averageDIA += DIA[i];
+        }
+        averageDIA = averageDIA/288;
+
+        double[] averagedBGs = averageBGs(url, dateStart, dateEnd, false);
+        BG[] adjustedBGs = new BG[576];
+        for(int i = 0; i < averagedBGs.length; i++)
+        {
+            int hour = i * 5 / 60;
+            int minute = i * 5 - (60 * hour);
+            adjustedBGs[i+144] = new BG(averagedBGs[i], LocalTime.of(hour, minute));
+        }
+        System.arraycopy(adjustedBGs, 288, adjustedBGs, 0, 144);
+        System.arraycopy(adjustedBGs, 144, adjustedBGs, 432, 144);
+
+        double[] xData = new double[averagedBGs.length];
+        for(int i = 0; i < xData.length; i++)
+            xData[i] = i * 5;
+
+        //IMPORTANT
+        double totalInsulin = 0;
+        double[] inputBasals =
+        {
+            1.05,  // 00:00
+            2.22,  // 01:00
+            2.14,  // 02:00
+            0.92,  // 03:00
+            1.36,  // 04:00
+            1.22,  // 05:00
+            1.35, // 06:00
+            1.01, // 07:00
+            0.94,  // 08:00
+            1.5,  // 09:00
+            1.84,  // 10:00
+            0.89,  // 11:00
+            0.62,  // 12:00
+            0.52,  // 13:00
+            0.64,  // 14:00
+            0.49,  // 15:00
+            0.72,  // 16:00
+            1.08,  // 17:00
+            1.46,  // 18:00
+            0.78,  // 19:00
+            0.66,  // 20:00
+            0.93,  // 21:00
+            0.97,  // 22:00
+            0.65 // 23:00
+        };
+
+        double[] extraInsulin = new double[1440/period];
+
+        double totalRaise = 0;
+        for(int i = 144; i < adjustedBGs.length-145; i+=period/5)
+        {
+            System.out.println(i);
+            double insulin = (basalAverages[(i-144)/(period/5)] - inputBasals[(i-144)/(period/5)]) / (period/5.0);
+            if(insulin > 0)
+            {
+                for(int j = i; j < i + period/5; j++)
+                {
+                    double raise = insulin * isf;
+                    totalInsulin -= insulin;
+                    double[] curveY = GIRCurve(insulin/weight, false);
+                    double length = DIA[j];
+                    for(int k = j; k < length + j; k++)
+                    {
+                        double currentTime = (k -j) * 5.0 / 60;
+                        double percentage = getGIRCurvePercentage(curveY, currentTime);
+                        totalRaise += raise * percentage;
+                        extraInsulin[(i-144)/(period/5)] -= insulin * percentage;
+                        for(int l = k; l < length + j; l++)
+                        {
+                            adjustedBGs[l].setBg(adjustedBGs[l].getBG() + (raise * percentage));
+                        }
+                    }
+                }
+            }
+        }
+        double totalDrop = 0;
+        double previousTotalDrop = -4;
+        for(int i = 144; i < adjustedBGs.length-145; i+=period/5)
+        {
+            double insulin = (inputBasals[(i-144)/(period/5)] - basalAverages[(i-144)/(period/5)]) / (period/5.0);
+            if(insulin > 0)
+            {
+                for(int j = i; j < i + period/5; j++)
+                {
+                    double drop = insulin * isf;
+                    totalDrop += drop;
+                    double[] curveY = GIRCurve(insulin/weight, false);
+                    double length = DIA[j];
+                    for(int k = j; k < length + j; k++)
+                    {
+                        double currentTime = (k -j) * 5.0 / 60;
+                        double percentage = getGIRCurvePercentage(curveY, currentTime);
+                        totalInsulin += insulin * percentage;
+                        extraInsulin[(i-144)/(period/5)] += insulin * percentage;
+                        for(int l = k; l < length + j; l++)
+                        {
+                            adjustedBGs[l].setBg(adjustedBGs[l].getBG() - (drop * percentage));
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        double averagedSum = 0;
+        double countAverageBGs = 0;
+        for(double i : averagedBGs)
+        {
+            if(!Double.isNaN(i))
+            {
+                averagedSum += i;
+                countAverageBGs++;
+            }
+        }
+
+        double adjustedSum = 0;
+        double countAdjustedBGs = 0;
+        for(int i = 144; i < 432; i++)
+        {
+            if(!Double.isNaN(adjustedBGs[i].getBG()))
+            {
+                adjustedSum += adjustedBGs[i].getBG();
+                countAdjustedBGs++;
+            }
+        }
+
+        System.out.println("AVG BG before: " + averagedSum/countAverageBGs);
+        System.out.println("AVG BG after: " + adjustedSum/countAdjustedBGs);
+        System.out.println("System Recommends: " + totalInsulin + " total units");
+        double actualInsulin = (averagedSum/countAverageBGs - adjustedSum/countAdjustedBGs) / isf * (288/averageDIA);
+        System.out.println("Insulin we can deliver is: " + actualInsulin + " total units");
+
+
+        String[][] extraInsulinCorrected = new String[1440/period+1][4];
+
+        extraInsulinCorrected[0][1] = "Basals";
+        extraInsulinCorrected[0][2] = "Basal w/ Temp";
+        extraInsulinCorrected[0][3] = "Recommended";
+        BasalProfile[] basalProfiles = ParseJSON.getBasalProfile(dateStart, dateEnd);
+        Basal[] basals = basalProfiles[basalProfiles.length-1].getProfile();
+        for (Basal basal : basals) {
+            int pos = (basal.getTime().getHour() * 60 + basal.getTime().getMinute()) / period;
+            extraInsulinCorrected[pos + 1][1] = basal.getValue() + "";
+        }
+        for(int i = 1; i < extraInsulinCorrected.length; i++)
+        {
+            String value = extraInsulinCorrected[i][1];
+            for(int j = i+1; j < extraInsulin.length && extraInsulinCorrected[j][1] == null; j++)
+            {
+                if(extraInsulinCorrected[j][1] == null)
+                    extraInsulinCorrected[j][1] = value;
+            }
+        }
+        if(extraInsulinCorrected[extraInsulinCorrected.length-1][1] == null)
+            extraInsulinCorrected[extraInsulinCorrected.length-1][1] = extraInsulinCorrected[extraInsulinCorrected.length-2][1];
+        for(int i = 0; i < extraInsulin.length; i++)
+        {
+            extraInsulinCorrected[i+1][0] = LocalTime.of(0, 0).plusMinutes(i * period).toString();
+            extraInsulinCorrected[i+1][2] = df.format(basalAverages[i]);
+            extraInsulinCorrected[i+1][3] = df.format(extraInsulin[i] * (actualInsulin/totalInsulin) * (60.0/period) + basalAverages[i]);
+        }
+
+        double[] adjustedBGsDouble = new double[288];
+        for(int i = 144; i < 432; i++)
+        {
+            adjustedBGsDouble[i-144] = adjustedBGs[i].getBG();
+        }
+
+        Thread chart = new Thread(() -> new BGChart(xData, averagedBGs, adjustedBGsDouble, dateStart, dateEnd));
+        chart.start();
+        return extraInsulinCorrected;
+
+    }
 
 
 

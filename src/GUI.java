@@ -55,9 +55,9 @@ public class GUI implements ActionListener
     {
         // Create array of String start and end dates to put into the dateStart and dateEnd selection boxes
         ZonedDateTime currentDay = ZonedDateTime.now();
-        String[] availableDaysEnd = new String[60];
-        String[] availableDaysStart = new String[60];
-        for (int i = 1; i < 61; i++)
+        String[] availableDaysEnd = new String[365];
+        String[] availableDaysStart = new String[365];
+        for (int i = 1; i < 366; i++)
         {
             availableDaysEnd[i-1] = currentDay.minusDays(i).toLocalDate().toString();
             availableDaysStart[i-1] = currentDay.minusDays(i).toLocalDate().toString();
@@ -199,7 +199,7 @@ public class GUI implements ActionListener
 
                 // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
                 // and the third has the basals that actually ran, which includes the profile basals and temp basals
-                String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
+                String[][] correctedBasals = Chart.manualAdjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
                 String[] columnNames = {"", "", "", ""}; // Let Swing know to show a table with 4 columns
                 basalTable = new JTable(correctedBasals, columnNames);
                 basalPanel.add(basalTable);
