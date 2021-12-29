@@ -199,7 +199,7 @@ public class GUI implements ActionListener
 
                 // Get the corrected basals in the 4th row of a matrix. The first row has the basal times, the second has the basals from the profile,
                 // and the third has the basals that actually ran, which includes the profile basals and temp basals
-                String[][] correctedBasals = Chart.manualAdjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
+                String[][] correctedBasals = Chart.adjustAverageBGs(urlString, dateStart, dateEnd, Integer.parseInt(minimumBGInput.getText()), Double.parseDouble(ISFInput.getText()), period, weight, DIA, basalAverages);
                 String[] columnNames = {"", "", "", ""}; // Let Swing know to show a table with 4 columns
                 basalTable = new JTable(correctedBasals, columnNames);
                 basalPanel.add(basalTable);
